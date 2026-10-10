@@ -1,0 +1,23 @@
+{
+  "name": "google-meet-clone",
+  "version": "2.0.0",
+  "description": "Pixel-perfect Google Meet clone built with Next.js and Material 3 Expressive design.",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000"
+  },
+  "dependencies": {
+    "@excalidraw/excalidraw": "^0.18.1",
+    "chess.js": "^1.4.0",
+    "next": "16.3.5",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "keywords": [
+    "google-meet",
+    "nextjs",
+    "material-3-expressive",
+    "webrtc"
+  ]
+}

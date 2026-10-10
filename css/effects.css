@@ -1,0 +1,63 @@
+/* Video Visual Effects and Virtual Background Styles */
+
+/* Blur light */
+.effect-blur-light video {
+  filter: blur(8px);
+}
+
+/* Blur heavy */
+.effect-blur-heavy video {
+  filter: blur(18px);
+}
+
+/* Studio lighting effect */
+.effect-studio-light video {
+  filter: contrast(1.15) brightness(1.1) saturate(1.1);
+}
+
+/* Virtual Backgrounds: applied to tile container with masked selfie */
+.effect-virtual-office {
+  background-image: url('https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1280&q=80') !important;
+  background-size: cover !important;
+  background-position: center !important;
+}
+
+.effect-virtual-bookshelf {
+  background-image: url('https://images.unsplash.com/photo-1507842229451-7f01be7fb896?auto=format&fit=crop&w=1280&q=80') !important;
+  background-size: cover !important;
+  background-position: center !important;
+}
+
+.effect-virtual-beach {
+  background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1280&q=80') !important;
+  background-size: cover !important;
+  background-position: center !important;
+}
+
+/* Speaker Active Audio Ring Animation */
+@keyframes speakingPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(138, 180, 248, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(138, 180, 248, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(138, 180, 248, 0);
+  }
+}
+
+.speaking-pulse {
+  animation: speakingPulse 1.4s infinite cubic-bezier(0.66, 0, 0, 1);
+}
+
+/* Screen sharing full preview styling */
+.screenshare-tile {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  background-color: #000;
+}
+.screenshare-tile video {
+  transform: none !important; /* Screen share should not be mirrored! */
+  object-fit: contain;
+}
