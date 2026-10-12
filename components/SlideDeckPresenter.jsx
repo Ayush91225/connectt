@@ -399,23 +399,6 @@ export default function SlideDeckPresenter({ theme = 'light' }) {
               transition: 'all 0.2s ease'
             }}
           >
-            {/* Subtle Slides Icon */}
-            <div
-              style={{
-                width: '64px',
-                height: '64px',
-                borderRadius: '20px',
-                backgroundColor: isLight ? '#fef3e2' : 'rgba(251, 188, 4, 0.1)',
-                border: isLight ? '1px solid #fbd38d' : '1px solid rgba(251, 188, 4, 0.25)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '24px'
-              }}
-            >
-              <span className="icon" style={{ fontSize: '32px', color: isLight ? '#f48120' : '#fbbc04' }}>co_present</span>
-            </div>
-
             <h2 style={{ fontSize: '24px', fontWeight: 600, color: cText, margin: '0 0 10px 0', letterSpacing: '-0.4px' }}>
               Present Slides or Documents
             </h2>

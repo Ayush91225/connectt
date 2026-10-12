@@ -125,16 +125,16 @@ export default function TimerStage({
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: 'clamp(20px, 4vw, 40px)',
-          gap: '28px'
+          padding: 'clamp(20px, 4vw, 40px) clamp(20px, 4vw, 40px) clamp(32px, 5vh, 56px)',
+          gap: 'clamp(16px, 2.5vh, 28px)'
         }}
       >
         {/* Progress Ring & Big Time Display */}
         <div
           style={{
             position: 'relative',
-            width: 'clamp(260px, 40vw, 360px)',
-            height: 'clamp(260px, 40vw, 360px)',
+            width: 'clamp(220px, min(35vw, 42vh), 400px)',
+            height: 'clamp(220px, min(35vw, 42vh), 400px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
@@ -158,7 +158,7 @@ export default function TimerStage({
               cy="160"
               r={radius}
               stroke={isLight ? '#e8e4de' : 'rgba(255, 255, 255, 0.05)'}
-              strokeWidth="6"
+              strokeWidth="8"
               fill="transparent"
             />
             {/* Animated Progress Ring */}
@@ -167,7 +167,7 @@ export default function TimerStage({
               cy="160"
               r={radius}
               stroke={isAlarmRinging ? '#ff8a80' : (isLight ? '#0284c7' : '#a8cded')}
-              strokeWidth="6"
+              strokeWidth="8"
               fill="transparent"
               strokeDasharray={circumference}
               strokeDashoffset={strokeDashoffset}
@@ -211,7 +211,7 @@ export default function TimerStage({
               <>
                 <div
                   style={{
-                    fontSize: 'clamp(48px, 10vw, 84px)',
+                    fontSize: 'clamp(44px, min(8vw, 10vh), 80px)',
                     fontWeight: 600,
                     letterSpacing: '-1.5px',
                     fontVariantNumeric: 'tabular-nums',
@@ -237,7 +237,7 @@ export default function TimerStage({
         </div>
 
         {/* Minimal Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'nowrap', justifyContent: 'center', width: '100%' }}>
           {isAlarmRinging ? (
             <button
               onClick={() => {
@@ -273,11 +273,11 @@ export default function TimerStage({
                 }}
                 disabled={timerSeconds < 60 || isTimerRunning}
                 style={{
-                  padding: '6px 12px',
-                  borderRadius: '16px',
+                  padding: 'clamp(6px, 1vh, 10px) clamp(12px, 1.5vw, 18px)',
+                  borderRadius: '9999px',
                   backgroundColor: isLight ? '#f5f3ef' : 'rgba(255, 255, 255, 0.05)',
                   color: timerSeconds < 60 || isTimerRunning ? (isLight ? '#c7c4be' : '#555') : (isLight ? '#6b6560' : '#c4c7c5'),
-                  fontSize: '12px',
+                  fontSize: 'clamp(12px, 1.2vw, 14px)',
                   border: `1px solid ${cBorder}`,
                   cursor: timerSeconds < 60 || isTimerRunning ? 'default' : 'pointer'
                 }}
@@ -296,17 +296,21 @@ export default function TimerStage({
                   sfx.playReaction();
                 }}
                 style={{
-                  padding: '10px 24px',
-                  borderRadius: '24px',
-                  backgroundColor: '#a8cded',
-                  color: '#0e1720',
-                  fontWeight: 600,
-                  fontSize: '13px',
-                  border: 'none',
+                  padding: 'clamp(10px, 1.5vh, 14px) clamp(24px, 3vw, 36px)',
+                  borderRadius: '9999px',
+                  backgroundColor: isTimerRunning
+                    ? (isLight ? '#f5f3ef' : 'rgba(255,255,255,0.08)')
+                    : '#89b754',
+                  color: isTimerRunning
+                    ? (isLight ? '#1a1814' : 'rgba(255,255,255,0.85)')
+                    : '#fff',
+                  fontWeight: 700,
+                  fontSize: 'clamp(13px, 1.4vw, 16px)',
+                  border: isTimerRunning ? `1px solid ${cBorder}` : 'none',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  gap: '8px'
                 }}
               >
                 <span className="icon" style={{ fontSize: '16px' }}>
@@ -322,11 +326,11 @@ export default function TimerStage({
                   sfx.playReaction();
                 }}
                 style={{
-                  padding: '10px 18px',
-                  borderRadius: '24px',
+                  padding: 'clamp(10px, 1.5vh, 14px) clamp(18px, 2.5vw, 28px)',
+                  borderRadius: '9999px',
                   backgroundColor: isLight ? '#f5f3ef' : 'rgba(255, 255, 255, 0.06)',
                   color: isLight ? '#6b6560' : '#c4c7c5',
-                  fontSize: '13px',
+                  fontSize: 'clamp(13px, 1.4vw, 16px)',
                   border: `1px solid ${cBorder}`,
                   cursor: 'pointer'
                 }}
@@ -341,11 +345,11 @@ export default function TimerStage({
                 }}
                 disabled={isTimerRunning}
                 style={{
-                  padding: '6px 12px',
-                  borderRadius: '16px',
+                  padding: 'clamp(6px, 1vh, 10px) clamp(12px, 1.5vw, 18px)',
+                  borderRadius: '9999px',
                   backgroundColor: isLight ? '#f5f3ef' : 'rgba(255, 255, 255, 0.05)',
                   color: isTimerRunning ? (isLight ? '#c7c4be' : '#555') : (isLight ? '#6b6560' : '#c4c7c5'),
-                  fontSize: '12px',
+                  fontSize: 'clamp(12px, 1.2vw, 14px)',
                   border: `1px solid ${cBorder}`,
                   cursor: isTimerRunning ? 'default' : 'pointer'
                 }}

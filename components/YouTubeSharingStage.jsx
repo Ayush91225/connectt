@@ -9,259 +9,188 @@ const QUICK_LECTURES = [
   { id: 'VMj-3S1tku0', label: 'Neural Networks • Karpathy', title: 'Building Neural Networks from Scratch' }
 ];
 
+const YTIcon = ({ size = 18 }) => (
+  <svg viewBox="0 0 28 20" width={size} height={size * 0.72} fill="none">
+    <path d="M27.4 3.1A3.5 3.5 0 0 0 24.9.6C22.7 0 14 0 14 0S5.3 0 3.1.6A3.5 3.5 0 0 0 .6 3.1C0 5.3 0 10 0 10s0 4.7.6 6.9a3.5 3.5 0 0 0 2.5 2.5C5.3 20 14 20 14 20s8.7 0 10.9-.6a3.5 3.5 0 0 0 2.5-2.5c.6-2.2.6-6.9.6-6.9s0-4.7-.6-6.9Z" fill="#89b754" />
+    <path d="m11 14.3 7-4.3-7-4.3v8.6Z" fill="white" />
+  </svg>
+);
+
 export default function YouTubeSharingStage({ theme = 'light' }) {
   const isLight = theme === 'light';
-  const cBg = isLight ? '#fbfbfb' : '#0a0a0c';
-  const cTopBar = isLight ? '#ffffff' : '#111215';
-  const cBorder = isLight ? '#e8e4de' : 'rgba(255, 255, 255, 0.08)';
-  const cText = isLight ? '#1a1814' : '#ffffff';
-  const cSubtle = isLight ? '#6b6560' : '#9aa0a6';
-  const cInputBg = isLight ? '#ffffff' : '#151619';
-  const cChipBg = isLight ? '#f5f3ef' : 'rgba(255, 255, 255, 0.05)';
-  const cChipHover = isLight ? '#eeebe4' : 'rgba(255, 255, 255, 0.1)';
+
+  const cBg     = isLight ? '#f7f5f2' : '#0e0f10';
+  const cCard   = isLight ? '#ffffff' : '#1a1b1e';
+  const cCardH  = isLight ? '#f0ede8' : '#222428';
+  const cBorder = isLight ? '#e8e4de' : 'rgba(255,255,255,0.07)';
+  const cText   = isLight ? '#1a1814' : '#f0f0f0';
+  const cSubtle = isLight ? '#6b6560' : '#6e7178';
 
   const [currentVideo, setCurrentVideo] = useState(null);
-  const [inputUrl, setInputUrl] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [inputUrl, setInputUrl]         = useState('');
+  const [error, setError]               = useState('');
 
   const extractVideoId = (input) => {
     if (!input) return null;
-    const match = input.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
-    return match ? match[1] : (input.trim().length === 11 ? input.trim() : null);
+    const v = input.trim();
+    if (/^[\w-]{11}$/.test(v)) return v;
+    try {
+      const url = new URL(/^[a-zA-Z][\w+.-]*:/.test(v) ? v : `https://${v}`);
+      const host = url.hostname.toLowerCase().replace(/^www\./, '');
+      if (host === 'youtu.be') {
+        const id = url.pathname.split('/').filter(Boolean)[0];
+        return id && /^[\w-]{11}$/.test(id) ? id : null;
+      }
+      if (['youtube.com', 'm.youtube.com', 'music.youtube.com'].includes(host)) {
+        const id = url.searchParams.get('v') ||
+          (url.pathname.match(/^\/(?:embed|shorts|live)\/([\w-]{11})/) || [])[1];
+        return id && /^[\w-]{11}$/.test(id) ? id : null;
+      }
+    } catch { return null; }
+    return null;
   };
 
-  const handleStartStream = (e) => {
-    if (e) e.preventDefault();
-    setErrorMessage('');
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError('');
     const id = extractVideoId(inputUrl);
     if (id) {
-      setCurrentVideo({
-        id,
-        title: 'Synchronized YouTube Stream'
-      });
+      setCurrentVideo({ id, title: 'Synchronized YouTube Stream' });
       setInputUrl('');
       sfx.playReaction();
     } else {
-      setErrorMessage('Please enter a valid YouTube video link');
+      setError('Enter a valid YouTube link or video ID.');
     }
   };
 
-  return (
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        backgroundColor: cBg,
-        color: cText,
-        fontFamily: "'Segoe UI', Roboto, -apple-system, sans-serif",
-        overflow: 'hidden'
-      }}
-    >
-      {/* ACTIVE VIDEO VIEW */}
-      {currentVideo ? (
-        <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
-          {/* Top Bar */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '6px 16px',
-              height: '42px',
-              backgroundColor: cTopBar,
-              borderBottom: `1px solid ${cBorder}`
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <svg viewBox="0 0 28 20" style={{ width: '16px', height: '12px', fill: '#ff0000' }}>
-                <path d="M27.973 3.123A3.504 3.504 0 0 0 25.503.653C23.323.07 14 .07 14 .07s-9.323 0-11.503.583A3.504 3.504 0 0 0 .027 3.123C-.556 5.303-.556 9.83-.556 9.83s0 4.527.583 6.707a3.504 3.504 0 0 0 2.47 2.47c2.18.583 11.503.583 11.503.583s9.323 0 11.503-.583a3.504 3.504 0 0 0 2.47-2.47c.583-2.18.583-6.707.583-6.707s0-4.527-.583-6.707z" />
-                <polygon points="11.2,14 18.2,9.83 11.2,5.66" fill="#ffffff" />
-              </svg>
-              <span style={{ fontSize: '13px', fontWeight: 500, color: cText }}>
-                {currentVideo.title}
-              </span>
-            </div>
-
-            <button
-              onClick={() => {
-                setCurrentVideo(null);
-                sfx.playToggle(false);
-              }}
-              style={{
-                padding: '4px 12px',
-                borderRadius: '12px',
-                backgroundColor: isLight ? '#f5f3ef' : 'rgba(255, 255, 255, 0.08)',
-                color: cText,
-                border: `1px solid ${cBorder}`,
-                fontSize: '11px',
-                fontWeight: 500,
-                cursor: 'pointer'
-              }}
-            >
-              Change Video
-            </button>
+  /* ── ACTIVE PLAYER ── */
+  if (currentVideo) {
+    return (
+      <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#000', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', backgroundColor: isLight ? '#ffffff' : '#111214', borderBottom: `1px solid ${cBorder}`, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <YTIcon size={16} />
+            <span style={{ fontSize: '13px', fontWeight: 500, color: cText }}>{currentVideo.title}</span>
           </div>
+          <button
+            onClick={() => { setCurrentVideo(null); sfx.playToggle(false); }}
+            style={{ padding: '6px 16px', borderRadius: '9999px', background: isLight ? '#f5f3ef' : 'rgba(255,255,255,0.07)', color: cText, border: `1px solid ${cBorder}`, fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}
+          >
+            Change video
+          </button>
+        </div>
+        <div style={{ flex: 1, position: 'relative' }}>
+          <iframe
+            key={currentVideo.id}
+            src={`https://www.youtube.com/embed/${currentVideo.id}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1`}
+            title={currentVideo.title}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      </div>
+    );
+  }
 
-          {/* Clean Full-Stage Video Player */}
-          <div style={{ flex: 1, position: 'relative', backgroundColor: '#000000' }}>
-            <iframe
-              key={currentVideo.id}
-              src={`https://www.youtube.com/embed/${currentVideo.id}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1`}
-              title={currentVideo.title}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                border: 'none'
-              }}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
+  /* ── EMPTY STATE ── */
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: cBg, overflowY: 'auto', overflowX: 'hidden', padding: 'clamp(24px, 5vh, 56px) clamp(16px, 5vw, 48px)' }}>
+      <div style={{ width: '100%', maxWidth: '560px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'clamp(20px, 3vh, 32px)' }}>
+
+        {/* Title */}
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 'clamp(28px, 4vw, 42px)', fontWeight: 400, color: cText, letterSpacing: '-1px', lineHeight: 1.2, marginBottom: '12px' }}>
+            Watch together,<br />perfectly in sync.
+          </div>
+          <div style={{ fontSize: 'clamp(13px, 1.5vw, 16px)', color: cSubtle, lineHeight: 1.6 }}>
+            Paste any YouTube link — everyone on the call watches it together.
           </div>
         </div>
-      ) : (
-        /* ULTRA-MINIMAL EMPTY STATE */
-        <div
+
+        {/* Big pill search bar — same style as reference home page join-field */}
+        {/* Search bar */}
+        <form
+          onSubmit={handleSubmit}
           style={{
-            flex: 1,
+            width: '100%',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '32px 20px',
-            backgroundColor: cBg
+            flexDirection: 'column',
+            gap: '8px'
           }}
         >
-          <div
-            style={{
-              width: '100%',
-              maxWidth: '480px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              textAlign: 'center'
-            }}
-          >
-            {/* Subtle Minimal Icon */}
-            <div
+          <div style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            background: isLight ? '#ffffff' : '#18191c',
+            border: `1.5px solid ${inputUrl ? '#89b754' : cBorder}`,
+            borderRadius: '28px',
+            padding: '4px 4px 4px 20px',
+            boxShadow: inputUrl
+              ? (isLight ? '0 0 0 4px rgba(137,183,84,0.1)' : '0 0 0 4px rgba(137,183,84,0.15)')
+              : (isLight ? '0 2px 12px rgba(0,0,0,0.06)' : '0 2px 12px rgba(0,0,0,0.3)'),
+            transition: 'border-color 0.2s, box-shadow 0.2s'
+          }}>
+            <input
+              type="text"
+              placeholder="Paste a YouTube link or video ID..."
+              value={inputUrl}
+              onChange={(e) => { setInputUrl(e.target.value); if (error) setError(''); }}
               style={{
-                width: '56px',
-                height: '56px',
-                borderRadius: '16px',
-                backgroundColor: 'rgba(234, 67, 53, 0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '20px'
+                flex: 1, minWidth: 0,
+                background: 'transparent', border: 'none', outline: 'none',
+                color: cText, fontSize: '15px', letterSpacing: '-0.2px',
+                padding: '14px 0'
+              }}
+            />
+            <button
+              type="submit"
+              style={{
+                flexShrink: 0,
+                height: '44px',
+                padding: '0 24px',
+                borderRadius: '9999px',
+                border: 'none',
+                background: inputUrl ? '#89b754' : (isLight ? '#f0ede8' : '#26272b'),
+                color: inputUrl ? '#fff' : cSubtle,
+                fontWeight: 700,
+                fontSize: '14px',
+                cursor: inputUrl ? 'pointer' : 'default',
+                transition: 'background 0.2s, color 0.2s',
+                whiteSpace: 'nowrap'
               }}
             >
-              <svg viewBox="0 0 28 20" style={{ width: '28px', height: '20px', fill: '#ea4335' }}>
-                <path d="M27.973 3.123A3.504 3.504 0 0 0 25.503.653C23.323.07 14 .07 14 .07s-9.323 0-11.503.583A3.504 3.504 0 0 0 .027 3.123C-.556 5.303-.556 9.83-.556 9.83s0 4.527.583 6.707a3.504 3.504 0 0 0 2.47 2.47c2.18.583 11.503.583 11.503.583s9.323 0 11.503-.583a3.504 3.504 0 0 0 2.47-2.47c.583-2.18.583-6.707.583-6.707s0-4.527-.583-6.707z" />
-                <polygon points="11.2,14 18.2,9.83 11.2,5.66" fill="#ffffff" />
-              </svg>
-            </div>
-
-            <h2 style={{ fontSize: '22px', fontWeight: 600, color: cText, margin: '0 0 8px 0', letterSpacing: '-0.3px' }}>
-              YouTube Watch Party
-            </h2>
-            <p style={{ fontSize: '13px', color: cSubtle, margin: '0 0 24px 0', lineHeight: 1.5, maxWidth: '380px' }}>
-              Stream lectures and videos synchronously with everyone in connectt.live.
-            </p>
-
-            {/* Clean Input Field */}
-            <form
-              onSubmit={handleStartStream}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                backgroundColor: cInputBg,
-                border: `1px solid ${cBorder}`,
-                borderRadius: '24px',
-                padding: '4px 6px 4px 16px',
-                marginBottom: '10px',
-                boxShadow: isLight ? '0 2px 10px rgba(0, 0, 0, 0.04)' : 'none'
-              }}
-            >
-              <input
-                type="text"
-                placeholder="Paste YouTube link..."
-                value={inputUrl}
-                onChange={(e) => {
-                  setInputUrl(e.target.value);
-                  if (errorMessage) setErrorMessage('');
-                }}
-                style={{
-                  flex: 1,
-                  background: 'transparent',
-                  border: 'none',
-                  outline: 'none',
-                  color: cText,
-                  fontSize: '13px'
-                }}
-              />
-              <button
-                type="submit"
-                style={{
-                  padding: '7px 18px',
-                  borderRadius: '18px',
-                  backgroundColor: '#ea4335',
-                  color: '#ffffff',
-                  fontWeight: 600,
-                  fontSize: '12px',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                Stream
-              </button>
-            </form>
-
-            {errorMessage && (
-              <div style={{ fontSize: '12px', color: '#ea4335', marginBottom: '12px' }}>
-                {errorMessage}
-              </div>
-            )}
-
-            {/* Quick Chips */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', marginTop: '16px' }}>
-              {QUICK_LECTURES.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setCurrentVideo(item);
-                    sfx.playReaction();
-                  }}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '14px',
-                    backgroundColor: cChipBg,
-                    color: cSubtle,
-                    fontSize: '11px',
-                    fontWeight: 500,
-                    border: `1px solid ${cBorder}`,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = cChipHover;
-                    e.currentTarget.style.color = cText;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = cChipBg;
-                    e.currentTarget.style.color = cSubtle;
-                  }}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
+              Stream
+            </button>
           </div>
+          {error && <div style={{ fontSize: '12px', color: '#ea4335', paddingLeft: '4px' }}>{error}</div>}
+        </form>
+
+        {/* Divider */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%' }}>
+          <div style={{ flex: 1, height: '1px', background: cBorder }} />
+          <span style={{ fontSize: '11px', fontWeight: 600, color: cSubtle, letterSpacing: '0.8px', textTransform: 'uppercase' }}>Quick picks</span>
+          <div style={{ flex: 1, height: '1px', background: cBorder }} />
         </div>
-      )}
+
+        {/* Quick pick chips */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
+          {QUICK_LECTURES.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => { setCurrentVideo({ id: item.id, title: item.title }); sfx.playReaction(); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '9999px', background: cCard, border: `1px solid ${cBorder}`, cursor: 'pointer', transition: 'background 0.15s', fontSize: '13px', color: cSubtle, fontWeight: 500, whiteSpace: 'nowrap' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = cCardH; e.currentTarget.style.color = cText; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = cCard; e.currentTarget.style.color = cSubtle; }}
+            >
+              <YTIcon size={12} />
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+      </div>
     </div>
   );
 }

@@ -77,6 +77,8 @@ body {
   width: 100vw;
   overflow: hidden;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
 }
 
 /* Material 3 Interactive Touch & Transitions - Glitch-Free */
@@ -564,6 +566,8 @@ button:focus-visible {
 .call-stage-area {
   display: flex;
   flex: 1;
+  min-width: 0;
+  min-height: 0;
   position: relative;
   overflow: hidden;
   padding: 0 20px 16px 20px;
@@ -573,6 +577,8 @@ button:focus-visible {
 
 .call-video-grid-flex {
   flex: 1;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -584,7 +590,6 @@ button:focus-visible {
   position: relative;
   width: 100%;
   height: 100%;
-  max-height: calc(100vh - 150px);
   background: linear-gradient(135deg, #4f5d71 0%, #3a4556 100%);
   border-radius: var(--m3-shape-lg);
   overflow: hidden;
@@ -779,20 +784,20 @@ button:focus-visible {
 }
 
 .call-floating-dock {
-  background-color: var(--m3-dark-surface-container);
+  background-color: transparent;
   border-radius: var(--m3-shape-full);
   padding: 8px 14px;
   display: flex;
   align-items: center;
   gap: 10px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
-  border: 1px solid var(--m3-dark-border);
+  box-shadow: none;
+  border: none;
   transition: transform 0.2s var(--m3-ease-spring);
 }
 
 .call-dock-circle-btn {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background-color: rgba(255, 255, 255, 0.08);
   color: #ffffff;
@@ -802,6 +807,7 @@ button:focus-visible {
   position: relative;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
+.call-dock-circle-btn .icon { font-size: 24px; }
 .call-dock-circle-btn:hover {
   background-color: rgba(255, 255, 255, 0.16);
 }
@@ -816,26 +822,42 @@ button:focus-visible {
 .call-split-dock-group {
   display: flex;
   align-items: center;
+  height: 48px;
   background-color: rgba(255, 255, 255, 0.08);
-  border-radius: var(--m3-shape-full);
-  padding: 0 4px;
+  border-radius: 9999px;
+  padding: 0 0 0 8px;
+  gap: 0;
+  overflow: hidden;
   transition: background-color 0.15s ease;
 }
 .call-split-dock-group:hover {
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: rgba(255, 255, 255, 0.12);
+}
+.call-split-dock-group .call-dock-circle-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+.call-split-dock-group .call-dock-circle-btn:hover {
+  background-color: rgba(255, 255, 255, 0.16);
 }
 
 .call-split-chevron {
-  width: 18px;
-  height: 40px;
+  width: 28px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #c4c7c5;
-  transition: color 0.15s ease;
+  font-size: 15px;
+  flex-shrink: 0;
+  transition: color 0.15s ease, background-color 0.15s ease;
 }
 .call-split-chevron:hover {
-  color: white;
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 .call-alert-exclamation-dot {
@@ -872,7 +894,7 @@ button:focus-visible {
   background-color: #c5221f;
 }
 .call-leave-pill-btn .icon {
-  transform: rotate(135deg);
+  transform: scaleX(-1);
   font-size: 22px;
 }
 
@@ -915,13 +937,14 @@ button:focus-visible {
 /* Side Drawer (Screenshot 5) with Spring Deceleration */
 .call-drawer-aside {
   width: 360px;
+  flex-shrink: 0;
   background-color: #1e1f20;
   border-radius: var(--m3-shape-lg);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75);
   border: 1px solid var(--m3-dark-border);
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 150px);
+  height: 100%;
   overflow: hidden;
   animation: drawerSlideSpring 0.38s var(--m3-ease-spring) forwards;
 }
@@ -1139,9 +1162,11 @@ button:focus-visible {
    ======================================================== */
 .m3-more-options-menu {
   position: absolute;
-  bottom: 84px;
-  right: 70px;
+  bottom: calc(100% + 10px);
+  right: -290px;
   width: 290px;
+  max-height: 75vh;
+  overflow-y: auto;
   background-color: #1e1f20;
   border-radius: 16px;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.1);
@@ -1154,6 +1179,18 @@ button:focus-visible {
   transform: translateY(14px) scale(0.95);
   transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1),
               transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+.m3-more-options-menu::-webkit-scrollbar {
+  width: 4px;
+}
+.m3-more-options-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+.m3-more-options-menu::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 4px;
 }
 .m3-more-options-menu.show {
   opacity: 1;
@@ -1264,8 +1301,7 @@ button:focus-visible {
   position: relative;
   flex: 1;
   width: 100%;
-  height: 100%;
-  max-height: calc(100vh - 200px);
+  min-height: 0;
   background: #000000;
   border-radius: 16px;
   overflow: hidden;
@@ -1278,8 +1314,6 @@ button:focus-visible {
 
 .gm-floating-pip-cam-tile {
   position: absolute;
-  bottom: 20px;
-  right: 20px;
   width: 180px;
   height: 105px;
   border-radius: 12px;
@@ -1288,10 +1322,9 @@ button:focus-visible {
   border: 2px solid rgba(255, 255, 255, 0.12);
   background-color: #1e1f20;
   z-index: 50;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.gm-floating-pip-cam-tile:hover {
-  transform: scale(1.05);
+  transition: box-shadow 0.2s ease;
+  user-select: none;
+  touch-action: none;
 }
 
 /* Material 3 Switch & Slider */
@@ -1329,7 +1362,7 @@ button:focus-visible {
   border-radius: 50%;
 }
 .m3-switch input:checked + .m3-slider {
-  background-color: #8ab4f8;
+  background-color: #89b754;
 }
 .m3-switch input:checked + .m3-slider:before {
   transform: translateX(16px);
@@ -1453,6 +1486,7 @@ button:focus-visible {
 .google-meet-sidebar-aside {
   width: 360px;
   max-width: 100%;
+  flex-shrink: 0;
   background-color: #1e1f20;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1721,22 +1755,153 @@ button:focus-visible {
   flex-shrink: 0;
 }
 
-/* ─── Responsive Utilities ─── */
-@media (max-width: 640px) {
+/*  " " " Responsive Utilities  " " " */
+@media (max-width: 768px) {
   .connectt-hide-mobile {
     display: none !important;
   }
 }
 
-@media (min-width: 641px) {
+@media (min-width: 769px) {
   .connectt-show-mobile-only {
     display: none !important;
   }
 }
 
 /* ========================================================
-   LIGHT THEME IN-CALL STYLING (HomeGuruEco Aesthetic)
+   HOME PAGE RESPONSIVE OVERRIDES
    ======================================================== */
+
+/* Tablet home */
+@media (max-width: 768px) {
+  /* Allow home page to scroll */
+  body:has(.home-responsive-root) {
+    overflow-y: auto;
+    height: auto;
+  }
+}
+
+/* Mobile home search bar stacks */
+@media (max-width: 520px) {
+  .home-search-action-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 10px !important;
+    border-radius: 16px !important;
+  }
+
+  .home-search-action-bar .home-input-area {
+    width: 100% !important;
+  }
+
+  .home-search-action-bar .home-action-btns {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+}
+
+/* Footer links wrap on mobile */
+@media (max-width: 480px) {
+  .home-footer-links {
+    flex-direction: column !important;
+    gap: 8px !important;
+    align-items: center !important;
+  }
+}
+
+/* ========================================================
+   ACTIVITIES SIDEBAR RESPONSIVE
+   ======================================================== */
+@media (max-width: 768px) {
+  .google-meet-sidebar-aside {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    z-index: 500 !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* Guru AI Panel full screen on mobile */
+@media (max-width: 520px) {
+  aside[aria-label='Guru AI Copilot'] {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+}
+
+/* ========================================================
+   STAGE AREA RESPONSIVE
+   ======================================================== */
+@media (max-width: 768px) {
+  .call-stage-area {
+    flex-direction: column;
+    padding: 6px 8px 8px 8px;
+    gap: 0;
+  }
+
+  .call-video-grid-flex {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .call-main-tile {
+    max-height: none;
+    height: 100%;
+  }
+
+  /* Presentation surface fills available space */
+  .gm-presentation-surface {
+    min-height: 0;
+    height: 100%;
+  }
+}
+
+/* ========================================================
+   MODAL RESPONSIVE
+   ======================================================== */
+@media (max-width: 480px) {
+  .gm-modal-card {
+    width: calc(100vw - 20px);
+    padding: 18px 14px;
+    border-radius: 18px;
+  }
+
+  .gm-modal-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .gm-btn-secondary,
+  .gm-btn-danger,
+  .gm-btn-primary {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 16px;
+  }
+}
+
+/* ========================================================
+   PERMISSION GUIDE CARD RESPONSIVE
+   ======================================================== */
+@media (max-width: 480px) {
+  .gm-perm-guide-card {
+    padding: 12px;
+  }
+
+  .gm-perm-url-bar {
+    font-size: 11px;
+    word-break: break-all;
+  }
+}
 .call-container.light-theme {
   background-color: #fbfbfb !important;
   color: #1a1814 !important;
@@ -1802,9 +1967,9 @@ button:focus-visible {
 }
 
 .call-container.light-theme .call-floating-dock {
-  background-color: #ffffff;
-  border: 1px solid #e8e4de;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .call-container.light-theme .call-dock-circle-btn {
@@ -1826,6 +1991,19 @@ button:focus-visible {
 .call-container.light-theme .call-split-dock-group {
   background-color: #f5f3ef;
   border: 1px solid #e8e4de;
+}
+.call-container.light-theme .call-split-dock-group:hover {
+  background-color: #ebe7e1;
+}
+.call-container.light-theme .call-split-dock-group .call-dock-circle-btn {
+  background-color: #ebe7e1;
+}
+.call-container.light-theme .call-split-dock-group .call-dock-circle-btn:hover {
+  background-color: #e0dbd4;
+}
+.call-container.light-theme .call-split-chevron {
+  border-right: none;
+  border-left: none;
 }
 
 .call-container.light-theme .call-split-chevron {
@@ -1889,6 +2067,10 @@ button:focus-visible {
   border: 1px solid #e8e4de !important;
   color: #1a1814 !important;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12) !important;
+  scrollbar-color: rgba(0,0,0,0.15) transparent !important;
+}
+.call-container.light-theme .m3-more-options-menu::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.15) !important;
 }
 
 .call-container.light-theme .m3-call-menu-item {
@@ -2051,66 +2233,127 @@ button:focus-visible {
 }
 
 .google-meet-sidebar-aside.light-theme .m3-switch input:checked + .m3-slider {
-  background-color: #f48120 !important;
+  background-color: #89b754 !important;
 }
 
 /* ========================================================
-   RESPONSIVE DESIGN ACROSS ALL SCREEN SIZES
+   RESPONSIVE DESIGN  " ALL DEVICES (320px   foldable   tablet   desktop)
    ======================================================== */
 
-/* Tablet & Smaller Laptops (<= 960px) */
-@media (max-width: 960px) {
+/*  " " Base: ensure body scrolls on mobile  " " */
+body {
+  overflow-x: hidden;
+}
+
+/*  " " Tablet & smaller laptops (   1024px)  " " */
+@media (max-width: 1024px) {
   .call-dock-row {
     padding: 0 12px;
     height: 72px;
-    gap: 8px;
     justify-content: center;
+    gap: 8px;
   }
 
   .call-right-action-pill {
     position: static;
     margin-left: 6px;
   }
+
+  .call-stage-area {
+    padding: 0 12px 12px 12px;
+    gap: 12px;
+  }
 }
 
-/* Tablets & Mobile (<= 768px) */
+/*  " " Tablets (   768px)  " " */
 @media (max-width: 768px) {
-  .call-stage-area {
-    position: relative;
-    padding: 8px;
+  .home-page, body {
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
-  .google-meet-sidebar-aside {
+  .call-container {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  /* Stage fills full screen, position relative for absolute children */
+  .call-stage-area {
+    padding: 0;
+    gap: 0;
+    flex-direction: column;
+    position: relative;
+    background: var(--m3-dark-bg);
+    min-width: 0;
+    min-height: 0;
+  }
+
+  /* Video grid = full stage canvas */
+  .call-video-grid-flex {
     position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
+    display: block;
+  }
+
+  /* Self-view tile: small portrait card, bottom-right corner */
+  .call-main-tile {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    width: clamp(90px, 28vw, 130px);
+    height: clamp(130px, 40vw, 190px);
+    max-height: none;
+    border-radius: 20px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+    border: 2px solid rgba(255,255,255,0.1) !important;
+    z-index: 10;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Avatar inside small self-view */
+  .call-camera-off-avatar {
+    width: 44px !important;
+    height: 44px !important;
+  }
+  .call-camera-off-avatar img {
+    width: 44px !important;
+    height: 44px !important;
+    border-width: 1px !important;
+  }
+
+  /* Mic badge: tiny, top-right of small tile */
+  .call-tile-mic-status {
+    top: 6px;
+    right: 6px;
+    width: 20px;
+    height: 20px;
+  }
+  .call-tile-mic-status .icon { font-size: 12px; }
+
+  /* Name tag hidden  " no room in small tile */
+  .call-tile-name-tag { display: none !important; }
+
+  /* Sidebar full-screen overlay */
+  .google-meet-sidebar-aside {
+    position: fixed !important;
+    top: 0 !important; right: 0 !important;
+    bottom: 0 !important; left: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     height: 100% !important;
     border-radius: 0 !important;
-    z-index: 400;
+    z-index: 500 !important;
   }
 
-  .call-floating-dock {
-    padding: 6px 10px;
-    gap: 6px;
-  }
-
-  .call-dock-circle-btn {
-    width: 38px;
-    height: 38px;
-  }
-
-  .call-leave-pill-btn {
-    width: 50px;
-    height: 38px;
-  }
-
-  .call-right-pill-btn {
-    width: 38px;
-    height: 38px;
-  }
+  .call-floating-dock { padding: 6px 10px; gap: 6px; }
+  .call-dock-circle-btn { width: 44px; height: 44px; }
+  .call-leave-pill-btn { width: 50px; height: 44px; }
+  .call-right-pill-btn { width: 44px; height: 44px; }
 
   .call-hand-raised-banner {
     left: 50%;
@@ -2119,117 +2362,436 @@ button:focus-visible {
     max-width: 360px;
     justify-content: space-between;
   }
+
+  .gm-presentation-top-pill {
+    flex-wrap: wrap; height: auto;
+    padding: 8px 14px; gap: 8px;
+    border-radius: 16px; align-self: stretch;
+  }
+
+  .gm-floating-pip-cam-tile {
+    width: 130px; height: 174px;
+    bottom: 96px; right: 12px;
+    border-radius: 16px;
+  }
 }
 
-/* Mobile Devices (<= 640px) */
+/*  " " Mobile (   640px)  " Google Meet style: single row, 6 buttons, small self-view card  " " */
 @media (max-width: 640px) {
-  .call-top-header {
-    padding: 6px 12px;
-    height: 48px;
+  .call-hide-mobile { display: none !important; }
+
+  .call-top-header { padding: 6px 10px; height: 48px; }
+
+  /* Self-view: small portrait card, bottom-right, exactly like reference */
+  .call-main-tile {
+    position: absolute;
+    bottom: 96px;
+    right: 16px;
+    width: clamp(80px, 26vw, 108px);
+    height: clamp(120px, 38vw, 160px);
+    max-height: none;
+    border-radius: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    border: 2px solid rgba(255,255,255,0.1) !important;
+    z-index: 10;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #404451;
   }
 
-  .call-dock-row {
-    height: 64px;
-    padding: 0 6px;
-    gap: 4px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  .call-dock-row::-webkit-scrollbar {
-    display: none;
-  }
-
-  .call-floating-dock {
-    padding: 4px 6px;
-    gap: 4px;
-    flex-shrink: 0;
-  }
-
-  .call-dock-circle-btn {
-    width: 34px;
-    height: 34px;
-  }
-
-  .call-dock-circle-btn .icon {
-    font-size: 18px;
-  }
-
-  .call-split-dock-group {
-    padding: 0 2px;
-  }
-
-  .call-split-chevron {
-    width: 14px;
-    height: 34px;
-  }
-
-  .call-split-chevron .icon {
-    font-size: 16px;
-  }
-
-  .call-leave-pill-btn {
-    width: 44px;
-    height: 34px;
-  }
-
-  .call-leave-pill-btn .icon {
-    font-size: 18px;
-  }
-
-  .call-right-action-pill {
-    padding: 4px 6px;
-    gap: 4px;
-    flex-shrink: 0;
-  }
-
-  .call-right-pill-btn {
-    width: 34px;
-    height: 34px;
-  }
-
-  .call-right-pill-btn .icon {
-    font-size: 18px;
-  }
-
-  .gm-reactions-popup {
-    max-width: calc(100vw - 24px);
-    padding: 4px 8px;
-    gap: 4px;
-    overflow-x: auto;
-  }
-
-  .gm-emoji-item-btn {
-    font-size: 20px;
-    width: 32px;
-    height: 32px;
-  }
-
-  .call-tile-name-tag {
-    bottom: 8px;
-    left: 8px;
-    padding: 4px 8px;
-    font-size: 12px;
-  }
-
-  .call-tile-mic-status {
-    top: 8px;
-    right: 8px;
-    width: 28px;
-    height: 28px;
-  }
-
+  /* Avatar inside small self-view  " tiny like reference (~56 units) */
   .call-camera-off-avatar {
-    width: clamp(72px, 24vw, 120px) !important;
-    height: clamp(72px, 24vw, 120px) !important;
+    width: 36px !important;
+    height: 36px !important;
+  }
+  .call-camera-off-avatar img {
+    width: 36px !important;
+    height: 36px !important;
+    border-width: 1px !important;
   }
 
-  .quick-media-pill-bar {
-    width: calc(100vw - 24px) !important;
-    left: 12px !important;
-    transform: none !important;
+  /* Name tag hidden */
+  .call-tile-name-tag { display: none !important; }
+
+  /* Mic badge tiny */
+  .call-tile-mic-status { top: 5px; right: 5px; width: 18px; height: 18px; }
+  .call-tile-mic-status .icon { font-size: 11px; }
+
+  /* Dock row: single centered row */
+  .call-dock-row {
+    height: 88px;
+    padding: 0 16px;
+    gap: 0;
+    overflow: visible;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
   }
+
+  /* Dock: no pill bg, each button has its own circle bg */
+  .call-floating-dock {
+    padding: 10px 4px;
+    gap: 12px;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: auto;
+    justify-content: center;
+    flex-wrap: nowrap;
+  }
+  .call-container.light-theme .call-floating-dock {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Hide ^ chevrons */
+  .call-split-chevron { display: none; }
+
+  /* Split group = plain circle, restore btn bg */
+  .call-split-dock-group {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 50%;
+    padding: 0;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .call-split-dock-group .call-dock-circle-btn {
+    background-color: rgba(255, 255, 255, 0.08);
+  }
+  .call-split-dock-group .call-dock-circle-btn:hover {
+    background-color: rgba(255, 255, 255, 0.16);
+  }
+  .call-container.light-theme .call-split-dock-group {
+    background: transparent !important;
+    border: none !important;
+  }
+  .call-container.light-theme .call-split-dock-group .call-dock-circle-btn {
+    background-color: #f5f3ef;
+  }
+
+  /* Circle buttons */
+  .call-dock-circle-btn { width: 48px; height: 48px; border-radius: 50%; }
+  .call-dock-circle-btn .icon { font-size: 22px; }
+
+  /* Leave button: red pill like reference #ed2924 */
+  .call-leave-pill-btn {
+    width: 56px;
+    height: 48px;
+    border-radius: 9999px;
+    background-color: #ed2924 !important;
+  }
+  .call-leave-pill-btn .icon { font-size: 22px; }
+
+  /* All popovers anchor above dock */
+  .m3-more-options-menu {
+    right: 0; left: auto; width: 280px;
+    bottom: calc(100% + 8px); max-height: 70vh;
+    overflow-y: auto; border-radius: 20px;
+  }
+  .gm-reactions-popup {
+    bottom: 96px;
+    left: 8px !important; right: 8px !important;
+    transform: none !important;
+    max-width: calc(100vw - 16px);
+    padding: 8px 10px; gap: 6px;
+    border-radius: 20px; justify-content: center;
+  }
+  .gm-reactions-popup.show { transform: none !important; }
+  .gm-emoji-item-btn { font-size: 22px; width: 36px; height: 36px; flex-shrink: 0; }
+  .quick-media-pill-bar {
+    left: 8px !important; right: 8px !important;
+    width: auto !important; transform: none !important;
+    bottom: 96px; border-radius: 16px;
+    flex-wrap: wrap; gap: 6px; padding: 10px 14px;
+  }
+  .quick-media-pill-bar.show { transform: none !important; }
+  .m3-audio-quick-popover {
+    left: 8px !important; right: 8px !important;
+    width: auto !important; bottom: 96px;
+    transform: translateY(14px) scale(0.95) !important;
+  }
+  .m3-audio-quick-popover.show { transform: translateY(0) scale(1) !important; }
+  .call-hand-raised-banner {
+    bottom: 96px; width: calc(100% - 16px);
+    padding: 8px 12px; gap: 8px;
+  }
+
+  .gm-floating-pip-cam-tile { width: 120px; height: 160px; bottom: 96px; right: 12px; border-radius: 16px; }
+  .gm-floating-pip-cam-tile img { width: 64px !important; height: 64px !important; }
+  .gm-presentation-top-pill {
+    flex-wrap: wrap; height: auto; padding: 8px 12px;
+    gap: 8px; border-radius: 14px; align-self: stretch; font-size: 12px;
+  }
+  .gm-modal-card { width: calc(100vw - 24px); padding: 20px 16px; border-radius: 20px; }
+  .hand-text { font-size: 12px; }
+  .hand-lower-btn { font-size: 11px; padding: 4px 10px; }
+  .call-recording-pill { padding: 3px 7px; font-size: 10px; }
+}
+
+/*  " " Small phones (   390px)  " " */
+@media (max-width: 390px) {
+  .call-top-header { padding: 4px 8px; height: 44px; }
+  .call-dock-row { height: 80px; padding: 0 10px; }
+  .call-floating-dock { gap: 8px; padding: 8px 14px; }
+  .call-dock-circle-btn { width: 44px; height: 44px; }
+  .call-dock-circle-btn .icon { font-size: 20px; }
+  .call-split-dock-group { width: auto; height: auto; }
+  .call-leave-pill-btn { width: 52px; height: 44px; }
+  .call-main-tile {
+    width: clamp(72px, 24vw, 96px);
+    height: clamp(108px, 34vw, 144px);
+    bottom: 88px;
+  }
+  .gm-reactions-popup, .quick-media-pill-bar, .m3-audio-quick-popover, .call-hand-raised-banner { bottom: 88px; }
+}
+
+/*  " " Foldable phones (   360px)  " " */
+@media (max-width: 360px) {
+  .call-dock-row { height: 76px; padding: 0 8px; }
+  .call-floating-dock { gap: 6px; padding: 7px 12px; }
+  .call-dock-circle-btn { width: 40px; height: 40px; }
+  .call-dock-circle-btn .icon { font-size: 18px; }
+  .call-split-dock-group { width: auto; height: auto; }
+  .call-leave-pill-btn { width: 48px; height: 40px; }
+  .call-main-tile {
+    width: 72px;
+    height: 108px;
+    bottom: 84px;
+    right: 10px;
+  }
+  .gm-modal-card { padding: 16px 12px; }
+  .gm-modal-title { font-size: 16px; }
+  .gm-modal-desc { font-size: 13px; }
+  .gm-reactions-popup, .quick-media-pill-bar, .m3-audio-quick-popover, .call-hand-raised-banner { bottom: 84px; }
+}
+
+/*  " " Landscape mobile (height    500px)  " " */
+@media (max-height: 500px) and (orientation: landscape) {
+  .call-top-header { height: 40px; padding: 4px 12px; }
+  .call-dock-row { height: 56px; padding: 0 12px; }
+  .call-floating-dock { padding: 4px 12px; gap: 8px; }
+  .call-dock-circle-btn { width: 40px; height: 40px; }
+  .call-dock-circle-btn .icon { font-size: 19px; }
+  .call-split-dock-group { width: auto; height: auto; }
+  .call-leave-pill-btn { width: 50px; height: 40px; }
+  .call-stage-area { padding: 4px 8px; }
+  .call-main-tile { max-height: calc(100vh - 100px); }
+  .gm-presentation-top-pill { display: none; }
+  .call-camera-off-avatar { width: 60px !important; height: 60px !important; }
+  .gm-reactions-popup, .quick-media-pill-bar, .m3-audio-quick-popover, .call-hand-raised-banner { bottom: 64px; }
 }
 
 
+
+/* ========================================================
+   PICTURE-IN-PICTURE WINDOW (Document PiP)
+   ======================================================== */
+
+.pip-video-container {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  background: #0e0f10;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.pip-video-container video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform: scaleX(-1);
+}
+
+.pip-cam-off-avatar {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1f2e 0%, #0e0f10 100%);
+}
+
+.pip-cam-off-img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2.5px solid rgba(255,255,255,0.12);
+  box-shadow: 0 0 0 6px rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.6);
+}
+
+/* Gradient scrim — top fade for name, bottom fade for controls */
+.pip-overlay-controls {
+  display: flex;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 10px 10px 12px;
+  background:
+    linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, transparent 28%),
+    linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 38%);
+  pointer-events: none;
+}
+
+/* Make buttons clickable even though parent has pointer-events:none */
+.pip-overlay-controls * {
+  pointer-events: auto;
+}
+
+.pip-overlay-name-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+}
+
+.pip-mic-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+}
+.pip-mic-badge .icon { font-size: 13px !important; }
+.pip-mic-badge.muted { background: #ea4335; }
+
+.pip-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.92);
+  letter-spacing: 0.1px;
+  font-family: 'Google Sans', Roboto, Arial, sans-serif;
+}
+
+/* Controls row — compact pill */
+.pip-overlay-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 6px 10px;
+  background: rgba(18,19,20,0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,0.08);
+  align-self: center;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+.pip-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, transform 0.1s ease;
+  flex-shrink: 0;
+}
+.pip-btn .icon { font-size: 18px !important; }
+.pip-btn:hover { background: rgba(255,255,255,0.2); transform: scale(1.06); }
+.pip-btn:active { transform: scale(0.94); }
+.pip-btn.pip-btn-off {
+  background: rgba(234,67,53,0.85);
+  backdrop-filter: blur(8px);
+}
+.pip-btn.pip-btn-off:hover { background: #ea4335; }
+.pip-btn.pip-btn-active {
+  background: rgba(194,231,255,0.2);
+  color: #c2e7ff;
+}
+
+.pip-btn-leave {
+  width: 48px;
+  height: 32px;
+  border-radius: 9999px;
+  background: #ea4335;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, transform 0.1s ease;
+  flex-shrink: 0;
+}
+.pip-btn-leave .icon { font-size: 17px !important; }
+.pip-btn-leave:hover { background: #d93025; transform: scale(1.04); }
+.pip-btn-leave:active { transform: scale(0.96); }
+
+/* Main window placeholder when PiP is active */
+.pip-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: #0e0f10;
+  z-index: 5;
+  animation: pageFadeIn 0.3s ease;
+}
+
+.pip-ph-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  opacity: 0.4;
+  filter: grayscale(0.5);
+}
+
+.pip-ph-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #e3e3e3;
+  margin: 0;
+}
+
+.pip-ph-sub {
+  font-size: 12px;
+  color: #5f6368;
+  margin: 0;
+}
+
+.pip-ph-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: 9999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #a8c7fa;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  font-family: 'Google Sans', Roboto, Arial, sans-serif;
+}
+.pip-ph-btn .icon { font-size: 16px; }
+.pip-ph-btn:hover { background: rgba(255,255,255,0.1); }

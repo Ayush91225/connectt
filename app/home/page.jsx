@@ -1,6 +1,8 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { sfx } from '../../lib/audio';
 import { getDiceBearAvatar } from '../../lib/avatar';
@@ -8,708 +10,609 @@ import GuruAIPanel from '../components/GuruAIPanel';
 
 export default function HomePage() {
   const router = useRouter();
+
   const [userName, setUserName] = useState('Ayushmaan');
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState('Ayushmaan');
   const [meetingCode, setMeetingCode] = useState('');
   const [showNewMenu, setShowNewMenu] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ left: 12, top: 12 });
   const [showLaterModal, setShowLaterModal] = useState(false);
   const [isGuruAIOpen, setIsGuruAIOpen] = useState(false);
   const [generatedLink, setGeneratedLink] = useState('');
   const [toast, setToast] = useState(null);
   const [timeStr, setTimeStr] = useState('');
   const [dateStr, setDateStr] = useState('');
-  const [isMac, setIsMac] = useState(true);
-  const inputRef = useRef(null);
+  const [selectedDate, setSelectedDate] = useState(new Date().getDate());
+  const [dark, setDark] = useState(false);
 
-  // Load saved name
+  const inputRef = useRef(null);
+  const menuRef = useRef(null);
+
+  const days = (() => {
+    const today = new Date();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+
+    return ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((day, i) => {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + i);
+      return { day, date: date.getDate() };
+    });
+  })();
+
   useEffect(() => {
     try {
       const saved = localStorage.getItem('connectt_username');
+
       if (saved && saved.trim()) {
         setUserName(saved.trim());
         setTempName(saved.trim());
       }
     } catch (e) {}
-
-    if (typeof window !== 'undefined') {
-      setIsMac(/(Mac|iPhone|iPod|iPad)/i.test(navigator.platform || navigator.userAgent));
-    }
   }, []);
 
-  // Live Clock
   useEffect(() => {
-    const updateTime = () => {
+    const update = () => {
       const now = new Date();
       let hours = now.getHours();
-      const mins = now.getMinutes().toString().padStart(2, '0');
+      const minutes = now.getMinutes().toString().padStart(2, '0');
       const ampm = hours >= 12 ? 'PM' : 'AM';
+
       hours = hours % 12 || 12;
-      setTimeStr(`${hours}:${mins} ${ampm}`);
-      const options = { weekday: 'short', month: 'short', day: 'numeric' };
-      setDateStr(now.toLocaleDateString('en-US', options));
+
+      setTimeStr(`${hours}:${minutes} ${ampm}`);
+      setDateStr(
+        now.toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'long',
+          day: 'numeric',
+        })
+      );
     };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
+
+    update();
+
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
   }, []);
 
-  // Cmd+K / Ctrl+K keyboard shortcut to focus search input
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
+    const handleKey = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
         inputRef.current?.focus();
       }
+
+      if (event.key === 'Escape') {
+        setShowNewMenu(false);
+      }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+
+    window.addEventListener('keydown', handleKey);
+
+    return () => window.removeEventListener('keydown', handleKey);
   }, []);
 
-  const showToast = (msg) => {
-    setToast(msg);
+  useEffect(() => {
+    if (!showNewMenu) return;
+
+    const closeOnOutsideClick = (event) => {
+      if (menuRef.current?.contains(event.target)) return;
+      if (event.target.closest?.('[data-new-menu-trigger]')) return;
+
+      setShowNewMenu(false);
+    };
+
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+    };
+  }, [showNewMenu]);
+
+  const showToast = (message) => {
+    setToast(message);
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleSaveName = (newName) => {
-    const trimmed = (newName || tempName || userName).trim();
+  const handleSaveName = () => {
+    const trimmed = tempName.trim();
+
     if (trimmed) {
       setUserName(trimmed);
-      setTempName(trimmed);
+
       try {
         localStorage.setItem('connectt_username', trimmed);
       } catch (e) {}
     }
+
     setIsEditingName(false);
-    showToast(`Profile name updated to ${trimmed}`);
+    showToast(`Name updated to ${trimmed}`);
   };
 
-  const handleJoin = (e) => {
-    if (e && e.preventDefault) e.preventDefault();
+  const handleJoin = (event) => {
+    event.preventDefault();
+
     const code = meetingCode.trim();
+
     if (userName.trim()) {
-      try { localStorage.setItem('connectt_username', userName.trim()); } catch (err) {}
+      try {
+        localStorage.setItem('connectt_username', userName.trim());
+      } catch (e) {}
     }
-    const clean = code.replace(/^(https?:\/\/)?connectt\.live\//, '').replace(/\//g, '');
+
+    const clean = code
+      .replace(/^(https?:\/\/)?connectt\.live\//, '')
+      .replace(/\//g, '');
+
     sfx.playJoin();
-    if (clean) {
-      router.push(`/${clean}`);
-    } else {
-      router.push('/sen-mvwh-cyc');
-    }
+    router.push(clean || 'sen-mvwh-cyc' ? `/${clean || 'sen-mvwh-cyc'}` : '/');
   };
 
   const handleStartInstant = () => {
     setShowNewMenu(false);
+
     if (userName.trim()) {
-      try { localStorage.setItem('connectt_username', userName.trim()); } catch (err) {}
+      try {
+        localStorage.setItem('connectt_username', userName.trim());
+      } catch (e) {}
     }
+
     sfx.playJoin();
-    const randomCode = `${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
-    router.push(`/${randomCode}`);
+
+    const code = `${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
+
+    router.push(`/${code}`);
   };
 
   const handleCreateLater = () => {
     setShowNewMenu(false);
-    const randomCode = `${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
-    setGeneratedLink(`https://connectt.live/${randomCode}`);
+
+    const code = `${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
+
+    setGeneratedLink(`https://connectt.live/${code}`);
     setShowLaterModal(true);
   };
 
-  return (
+  const bg = dark ? '#202124' : '#ffffff';
+  const text = dark ? '#e8eaed' : '#202124';
+  const muted = dark ? '#bdc1c6' : '#5f6368';
+  const border = dark ? '#3c4043' : '#dadce0';
+  const inputBg = dark ? '#303134' : '#e8eef7';
+
+  // Position the menu using the exact button that was clicked.
+  const toggleNewMenu = (event) => {
+    event.stopPropagation();
+
+    if (showNewMenu) {
+      setShowNewMenu(false);
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+
+    const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = window.innerHeight;
+
+    const menuWidth = Math.min(240, viewportWidth - 24);
+    const estimatedMenuHeight = 132;
+    const gap = 8;
+    const margin = 12;
+
+    // Align to the button's left edge where possible.
+    const left = Math.max(
+      margin,
+      Math.min(rect.left, viewportWidth - menuWidth - margin)
+    );
+
+    // Prefer opening below the clicked button.
+    let top = rect.bottom + gap;
+
+    // If there is not enough room, open above the button.
+    if (top + estimatedMenuHeight > viewportHeight - margin) {
+      top = rect.top - estimatedMenuHeight - gap;
+    }
+
+    top = Math.max(
+      margin,
+      Math.min(top, viewportHeight - estimatedMenuHeight - margin)
+    );
+
+    setMenuPosition({ left, top });
+    setShowNewMenu(true);
+  };
+
+  const closeNewMenu = () => setShowNewMenu(false);
+
+  const meetingMenuItems = [
+    {
+      icon: 'bolt',
+      label: 'Start instant meeting',
+      action: handleStartInstant,
+    },
+    {
+      icon: 'link',
+      label: 'Create meeting for later',
+      action: handleCreateLater,
+    },
+    {
+      icon: 'calendar_month',
+      label: 'Schedule in Calendar',
+      action: () => {
+        closeNewMenu();
+        showToast('Schedule via Google Calendar or Outlook');
+      },
+    },
+  ];
+
+  const newMenu = showNewMenu ? (
     <div
+      ref={menuRef}
+      className="hm-new-menu"
+      onClick={(event) => event.stopPropagation()}
       style={{
-        height: '100vh',
-        width: '100vw',
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        backgroundColor: '#fbfbfb',
-        color: '#1a1814',
-        display: 'flex',
-        flexDirection: 'column',
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
-      }}
-      onClick={() => {
-        if (showNewMenu) setShowNewMenu(false);
+        position: 'fixed',
+        top: menuPosition.top,
+        left: menuPosition.left,
+        width: 240,
+        maxWidth: 'calc(100vw - 24px)',
+        boxSizing: 'border-box',
+        background: bg,
+        border: `1px solid ${border}`,
+        borderRadius: 16,
+        boxShadow: '0 4px 20px rgba(0,0,0,0.13)',
+        padding: '6px 0',
+        zIndex: 9999,
       }}
     >
-      {/* ─── Topbar Navigation (HomeGuruEco Style: 58px) ─── */}
+      {meetingMenuItems.map(({ icon, label, action }) => (
+        <button
+          key={label}
+          type="button"
+          onClick={action}
+          className="hm-menu-item"
+          style={{ color: text }}
+        >
+          <span className="icon hm-menu-icon">{icon}</span>
+          <span className="hm-menu-label">{label}</span>
+        </button>
+      ))}
+    </div>
+  ) : null;
+
+  return (
+    <main
+      className="hm-root"
+      style={{
+        width: '100%',
+        minHeight: '100vh',
+        background: bg,
+        color: text,
+        fontFamily: 'Google Sans, Roboto, Arial, sans-serif',
+        position: 'relative',
+        overflowX: 'clip',
+        transition: 'background 0.2s, color 0.2s',
+      }}
+    >
+      {/* HEADER */}
       <header
-        style={{
-          height: '58px',
-          borderBottom: '1px solid #e8e4de',
-          backgroundColor: '#ffffff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 16px',
-          position: 'sticky',
-          top: 0,
-          zIndex: 40,
-          flexShrink: 0
-        }}
+        className="hm-header"
+        style={{ borderBottom: `1px solid ${border}`, background: bg }}
       >
-        {/* Left: Connectt Brand & Ecosystem Badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div
-            onClick={() => router.push('/home')}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
-          >
-            <img
-              src="/connectt.png"
-              alt="Connectt Icon"
-              style={{ height: '26px', width: 'auto', objectFit: 'contain' }}
-            />
-            <img
-              src="/connectt1.png"
-              alt="Connectt Logo"
-              style={{ height: '17px', width: 'auto', objectFit: 'contain' }}
-            />
-          </div>
-
-          <div
-            className="connectt-hide-mobile"
-            style={{ height: '16px', width: '1px', backgroundColor: '#e8e4de' }}
-          />
-
-          {/* HomeGuru Brand Logo */}
-          <a
-            href="https://uat.homeguruworld.in"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="connectt-hide-mobile"
-            style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}
-            title="HomeGuru"
-          >
-            <img
-              src="/logo.png"
-              alt="HomeGuru"
-              style={{ height: '20px', width: 'auto', objectFit: 'contain' }}
-            />
-          </a>
+        <div className="hm-brand" onClick={() => router.push('/home')}>
+          <img src="/connectt.png" alt="Connectt" />
+          <img src="/connectt1.png" alt="Connectt" />
         </div>
 
-        {/* Right Header Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {timeStr && (
-            <span
-              className="connectt-hide-mobile"
-              style={{ fontSize: '12px', color: '#6b6560', fontWeight: 500, marginRight: '4px' }}
+        <div className="hm-center">
+          <form
+            className="hm-join-form"
+            onSubmit={handleJoin}
+            style={{ background: inputBg }}
+          >
+            <span className="icon hm-keyboard-icon">keyboard</span>
+
+            <input
+              ref={inputRef}
+              value={meetingCode}
+              onChange={(event) => setMeetingCode(event.target.value)}
+              placeholder="Enter a code or link"
+              className="hm-code-input"
+              style={{ color: text }}
+            />
+
+            <button
+              type="submit"
+              disabled={!meetingCode.trim()}
+              className="hm-join-button"
+              style={{
+                background: meetingCode.trim()
+                  ? '#c2e7ff'
+                  : dark
+                    ? '#3c4043'
+                    : '#d2d6dd',
+                color: meetingCode.trim()
+                  ? '#004a77'
+                  : dark
+                    ? '#5f6368'
+                    : '#858990',
+              }}
             >
-              {timeStr} • {dateStr}
+              Join
+            </button>
+          </form>
+
+          <div className="hm-new-wrapper">
+            <button
+              type="button"
+              data-new-menu-trigger
+              className="hm-pill hm-pill-green"
+              onClick={toggleNewMenu}
+            >
+              <span className="icon">videocam</span>
+              <span>New</span>
+            </button>
+          </div>
+
+          <button className="hm-pill hm-pill-blue hm-hide-sm" type="button">
+            <span className="icon">mic</span>
+            <span>In-person notes</span>
+          </button>
+        </div>
+
+        <div className="hm-right">
+          {timeStr && (
+            <span className="hm-time hm-hide-md" style={{ color: muted }}>
+              {timeStr} · {dateStr}
             </span>
           )}
 
-          {/* Guru AI Trigger - Opens Guru AI Panel */}
           <button
-            type="button"
+            className="hm-pill hm-pill-outline hm-hide-sm"
             onClick={() => setIsGuruAIOpen(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '5px 10px',
-              borderRadius: '8px',
-              border: '1px solid #e8e4de',
-              backgroundColor: isGuruAIOpen ? 'rgba(244, 129, 32, 0.08)' : '#ffffff',
-              color: '#1a1814',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 600,
-              transition: 'all 0.15s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(244, 129, 32, 0.08)';
-              e.currentTarget.style.borderColor = 'rgba(244, 129, 32, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              if (!isGuruAIOpen) {
-                e.currentTarget.style.backgroundColor = '#ffffff';
-                e.currentTarget.style.borderColor = '#e8e4de';
-              }
-            }}
+            style={{ border: `1px solid ${border}`, color: text }}
+            type="button"
           >
-            <img src="/guruai.png" alt="Guru AI" style={{ width: '15px', height: '15px', objectFit: 'contain' }} />
+            <img src="/guruai.png" alt="Guru AI" className="hm-guru-icon" />
             <span>Guru AI</span>
           </button>
 
-          {/* Support Link */}
-          <a
-            href="https://uat.homeguruworld.in/dashboard/settings?tab=support"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              padding: '5px 8px',
-              borderRadius: '8px',
-              border: 'none',
-              background: 'transparent',
-              color: '#6b6560',
-              textDecoration: 'none',
-              fontSize: '12px',
-              fontWeight: 500,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}
-          >
-            <span className="icon" style={{ fontSize: '16px' }}>help</span>
-            <span className="connectt-hide-mobile">Support</span>
-          </a>
+          <button className="hm-icon-btn" style={{ color: muted }} type="button">
+            <span className="icon hm-large-icon">help_outline</span>
+          </button>
 
-          {/* Profile User Pill */}
-          <div
+          <button className="hm-icon-btn" style={{ color: muted }} type="button">
+            <span className="icon hm-large-icon">settings</span>
+          </button>
+
+          <button
+            type="button"
+            className="hm-profile"
             onClick={() => {
               setTempName(userName);
               setIsEditingName(true);
             }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '7px',
-              padding: '3px 8px 3px 4px',
-              borderRadius: '20px',
-              backgroundColor: '#ffffff',
-              border: '1px solid #e8e4de',
-              cursor: 'pointer',
-              transition: 'background-color 0.15s ease'
-            }}
-            title="Click to edit display name"
+            style={{ border: `1px solid ${border}`, background: bg }}
           >
             <img
               src={getDiceBearAvatar(userName)}
               alt={userName}
-              style={{
-                width: '24px',
-                height: '24px',
-                borderRadius: '50%',
-                objectFit: 'cover',
-                backgroundColor: '#fbfbfb'
-              }}
+              className="hm-avatar"
             />
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#1a1814', maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {userName}
+            <span className="hm-profile-name">{userName}</span>
+          </button>
+
+          <button
+            className="hm-icon-btn hm-theme-button"
+            onClick={() => setDark(!dark)}
+            style={{ border: `1px solid ${border}`, color: text }}
+            type="button"
+          >
+            <span className="icon">
+              {dark ? 'light_mode' : 'dark_mode'}
             </span>
-          </div>
+          </button>
         </div>
       </header>
 
-      {/* ─── Main Content Canvas (Minimalist, Responsive) ─── */}
-      <main
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          maxWidth: '720px',
-          width: '100%',
-          margin: '0 auto',
-          padding: '40px 20px',
-          boxSizing: 'border-box'
-        }}
+      {/* DATE STRIP */}
+      <section
+        className="hm-date-strip"
+        style={{ borderBottom: `1px solid ${border}` }}
       >
-        {/* Hero Heading */}
-        <div style={{ textAlign: 'center', marginBottom: '32px', userSelect: 'none' }}>
-          <h1
-            style={{
-              fontSize: 'clamp(1.85rem, 4.5vw, 2.75rem)',
-              fontWeight: 700,
-              color: '#1a1814',
-              letterSpacing: '-0.025em',
-              margin: '0 0 10px 0',
-              lineHeight: 1.15
-            }}
+        <div className="hm-date-title" style={{ color: text }}>
+          <span>{dateStr}</span>
+          <span
+            className="icon"
+            style={{ fontSize: 16, color: muted, cursor: 'pointer' }}
           >
-            Ready when you are.
-          </h1>
-          <p
-            style={{
-              fontSize: 'clamp(13px, 2.2vw, 15px)',
-              color: '#6b6560',
-              margin: 0,
-              fontWeight: 400,
-              maxWidth: '560px',
-              lineHeight: 1.5
-            }}
-          >
-            High-fidelity interactive video meetings, collaborative whiteboard, and real-time learning.
-          </p>
-        </div>
-
-        {/* Search & Meeting Action Bar */}
-        <div style={{ width: '100%', position: 'relative', zIndex: 30, marginBottom: '24px' }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '6px 8px 6px 14px',
-              borderRadius: '16px',
-              border: '1px solid #e8e4de',
-              backgroundColor: '#ffffff',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
-              transition: 'all 0.15s ease',
-              width: '100%',
-              boxSizing: 'border-box'
-            }}
-          >
-            {/* Input area */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-              <span className="icon" style={{ fontSize: '18px', color: '#a8a39d', flexShrink: 0 }}>search</span>
-              <input
-                ref={inputRef}
-                type="text"
-                value={meetingCode}
-                onChange={(e) => setMeetingCode(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleJoin(e);
-                }}
-                placeholder="Search or enter meeting code..."
-                style={{
-                  width: '100%',
-                  background: 'transparent',
-                  border: 'none',
-                  outline: 'none',
-                  fontSize: '14px',
-                  color: '#1a1814'
-                }}
-              />
-            </div>
-
-            {/* Right inline controls */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, marginLeft: '6px' }}>
-              {!meetingCode && (
-                <div className="connectt-hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                  <kbd style={{ padding: '2px 5px', fontSize: '10px', fontWeight: 600, color: '#6b6560', backgroundColor: '#f0ede8', border: '1px solid #e8e4de', borderRadius: '4px' }}>
-                    {isMac ? '⌘' : 'Ctrl'}
-                  </kbd>
-                  <kbd style={{ padding: '2px 5px', fontSize: '10px', fontWeight: 600, color: '#6b6560', backgroundColor: '#f0ede8', border: '1px solid #e8e4de', borderRadius: '4px' }}>
-                    K
-                  </kbd>
-                </div>
-              )}
-
-              {/* Join Button */}
-              {meetingCode && (
-                <button
-                  type="button"
-                  onClick={handleJoin}
-                  style={{
-                    padding: '7px 14px',
-                    borderRadius: '10px',
-                    backgroundColor: '#1a1814',
-                    color: '#ffffff',
-                    border: 'none',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'background-color 0.15s ease'
-                  }}
-                >
-                  Join
-                </button>
-              )}
-
-              {/* New Meeting CTA with Dropdown */}
-              <div style={{ position: 'relative' }}>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowNewMenu(!showNewMenu);
-                  }}
-                  style={{
-                    padding: '7px 12px',
-                    borderRadius: '10px',
-                    backgroundColor: '#f48120',
-                    color: '#ffffff',
-                    border: 'none',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    boxShadow: '0 2px 8px rgba(244, 129, 32, 0.25)',
-                    transition: 'background-color 0.15s ease'
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#e07114')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#f48120')}
-                >
-                  <span style={{ whiteSpace: 'nowrap' }}>New meeting</span>
-                  <span className="icon" style={{ fontSize: '16px' }}>arrow_drop_down</span>
-                </button>
-
-                {/* Dropdown Menu */}
-                {showNewMenu && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 8px)',
-                      right: 0,
-                      backgroundColor: '#ffffff',
-                      borderRadius: '14px',
-                      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
-                      border: '1px solid #e8e4de',
-                      width: '240px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      padding: '6px 0',
-                      zIndex: 200
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div
-                      onClick={handleStartInstant}
-                      style={{
-                        padding: '10px 14px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        cursor: 'pointer',
-                        color: '#1a1814',
-                        fontSize: '13px',
-                        fontWeight: 500,
-                        transition: 'background-color 0.15s ease'
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#fbfbfb')}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                    >
-                      <span className="icon" style={{ color: '#f48120', fontSize: '18px' }}>bolt</span>
-                      <span>Start instant meeting</span>
-                    </div>
-                    <div
-                      onClick={handleCreateLater}
-                      style={{
-                        padding: '10px 14px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        cursor: 'pointer',
-                        color: '#1a1814',
-                        fontSize: '13px',
-                        fontWeight: 500,
-                        transition: 'background-color 0.15s ease'
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#fbfbfb')}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                    >
-                      <span className="icon" style={{ color: '#f48120', fontSize: '18px' }}>link</span>
-                      <span>Create meeting for later</span>
-                    </div>
-                    <div
-                      onClick={() => {
-                        setShowNewMenu(false);
-                        showToast('Schedule via Google Calendar or Outlook');
-                      }}
-                      style={{
-                        padding: '10px 14px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        cursor: 'pointer',
-                        color: '#1a1814',
-                        fontSize: '13px',
-                        fontWeight: 500,
-                        transition: 'background-color 0.15s ease'
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#fbfbfb')}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                    >
-                      <span className="icon" style={{ color: '#f48120', fontSize: '18px' }}>calendar_month</span>
-                      <span>Schedule in Calendar</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* ─── Footer (Exact User Links & Copyright) ─── */}
-      <footer
-        style={{
-          width: '100%',
-          marginTop: 'auto',
-          padding: '16px',
-          borderTop: '1px solid #e8e4de',
-          backgroundColor: '#ffffff',
-          textAlign: 'center',
-          flexShrink: 0
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px 18px',
-            fontSize: '12px',
-            color: '#6b6560'
-          }}
-        >
-          <a
-            href="https://uat.homeguruworld.in/dashboard/settings?tab=support"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: 'inherit', textDecoration: 'none' }}
-          >
-            Support
-          </a>
-          <a
-            href="https://status.homeguruworld.in/"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: 'inherit', textDecoration: 'none' }}
-          >
-            System status
-          </a>
-          <a
-            href="https://homeguruworld.com/terms"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: 'inherit', textDecoration: 'none' }}
-          >
-            Terms of Use
-          </a>
-          <a
-            href="https://homeguruworld.com/privacy"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: 'inherit', textDecoration: 'none' }}
-          >
-            Privacy Policy
-          </a>
-          <a
-            href="https://uat.homeguruworld.in/library"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: 'inherit', textDecoration: 'none' }}
-          >
-            Library
-          </a>
-          <span style={{ color: '#6b6560', opacity: 0.65 }}>
-            © 2026 HomeGuru I Private Limited
+            expand_more
           </span>
         </div>
+
+        <div className="hm-date-picker">
+          <button className="hm-date-arrow" style={{ color: muted }} type="button">
+            <span className="icon">chevron_left</span>
+          </button>
+
+          <div className="hm-date-days">
+            {days.map((item) => {
+              const isSelected = selectedDate === item.date;
+              const isToday = item.date === new Date().getDate();
+
+              return (
+                <button
+                  key={item.day}
+                  type="button"
+                  onClick={() => setSelectedDate(item.date)}
+                  className="hm-day"
+                  style={{
+                    background: isSelected
+                      ? dark
+                        ? '#004a77'
+                        : '#b8e0ff'
+                      : 'transparent',
+                    color: isSelected
+                      ? dark
+                        ? '#c2e7ff'
+                        : '#004a77'
+                      : isToday
+                        ? '#89b754'
+                        : muted,
+                    position: 'relative',
+                  }}
+                >
+                  <span className="hm-day-label">{item.day}</span>
+                  <strong className="hm-day-num">{item.date}</strong>
+
+                  {isToday && !isSelected && (
+                    <span className="hm-today-dot" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <button className="hm-date-arrow" style={{ color: muted }} type="button">
+            <span className="icon">chevron_right</span>
+          </button>
+        </div>
+      </section>
+
+      {/* EMPTY STATE */}
+      <section className="hm-empty">
+        <img
+          src="/home.png"
+          alt="No meetings"
+          className="hm-empty-image"
+        />
+
+        <h1 style={{ color: text }}>No meetings scheduled for today</h1>
+
+        <p style={{ color: muted, letterSpacing: -0.3 }}>
+          Schedule a meeting or enjoy the free time
+        </p>
+
+        <div className="hm-empty-new-wrapper">
+          <button
+            type="button"
+            data-new-menu-trigger
+            onClick={toggleNewMenu}
+            className="hm-empty-new-button"
+          >
+            <span className="icon">videocam</span>
+            New
+          </button>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer
+        className="hm-footer"
+        style={{
+          borderTop: `1px solid ${border}`,
+          background: bg,
+          color: muted,
+        }}
+      >
+        {[
+          {
+            label: 'Support',
+            href: 'https://uat.homeguruworld.in/dashboard/settings?tab=support',
+          },
+          {
+            label: 'System status',
+            href: 'https://status.homeguruworld.in/',
+          },
+          {
+            label: 'Terms of Use',
+            href: 'https://homeguruworld.com/terms',
+          },
+          {
+            label: 'Privacy Policy',
+            href: 'https://homeguruworld.com/privacy',
+          },
+          {
+            label: 'Library',
+            href: 'https://uat.homeguruworld.in/library',
+          },
+        ].map(({ label, href }) => (
+          <a key={label} href={href} target="_blank" rel="noopener noreferrer">
+            {label}
+          </a>
+        ))}
+
+        <span className="hm-copyright">
+          © 2026 HomeGuru I Private Limited
+        </span>
       </footer>
 
-      {/* ─── Guru AI Copilot Panel (Slide-out Sidebar) ─── */}
+      {/* Render the dropdown only ONCE, outside the page layout. */}
+      {typeof document !== 'undefined' &&
+        showNewMenu &&
+        createPortal(newMenu, document.body)}
+
+      {/* GURU AI PANEL */}
       <GuruAIPanel
         isOpen={isGuruAIOpen}
         onClose={() => setIsGuruAIOpen(false)}
         userName={userName}
       />
 
-      {/* ─── Create Meeting for Later Modal ─── */}
+      {/* CREATE LATER MODAL */}
       {showLaterModal && (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '16px'
-          }}
+          className="hm-modal-overlay"
           onClick={() => setShowLaterModal(false)}
         >
           <div
-            style={{
-              backgroundColor: '#ffffff',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '100%',
-              maxWidth: '420px',
-              boxShadow: '0 20px 48px rgba(0,0,0,0.18)',
-              border: '1px solid #e8e4de'
-            }}
-            onClick={(e) => e.stopPropagation()}
+            className="hm-modal"
+            style={{ background: bg, border: `1px solid ${border}` }}
+            onClick={(event) => event.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <h3 style={{ fontSize: '17px', fontWeight: 700, margin: 0, color: '#1a1814' }}>
-                Here&apos;s the link to your meeting
-              </h3>
+            <div className="hm-modal-heading">
+              <h3 style={{ color: text }}>Here&apos;s the link to your meeting</h3>
               <button
                 type="button"
+                className="hm-close-button"
                 onClick={() => setShowLaterModal(false)}
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#6b6560',
-                  cursor: 'pointer'
-                }}
+                style={{ color: muted }}
               >
-                <span className="icon" style={{ fontSize: '20px' }}>close</span>
+                <span className="icon">close</span>
               </button>
             </div>
-            <p style={{ fontSize: '13px', color: '#6b6560', margin: '0 0 18px 0', lineHeight: 1.5 }}>
-              Copy this link and send it to people that you want to meet with. Be sure to save it so that you can use it later.
+
+            <p className="hm-modal-description" style={{ color: muted }}>
+              Copy this link and send it to people you want to meet with.
             </p>
 
             <div
+              className="hm-generated-link"
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '10px 14px',
-                borderRadius: '12px',
-                backgroundColor: '#f5f3ef',
-                border: '1px solid #e8e4de',
-                marginBottom: '20px'
+                background: dark ? '#303134' : '#f5f3ef',
+                border: `1px solid ${border}`,
               }}
             >
-              <span style={{ fontSize: '13px', color: '#1a1814', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {generatedLink}
-              </span>
+              <span style={{ color: text }}>{generatedLink}</span>
+
               <button
                 type="button"
                 onClick={() => {
                   navigator.clipboard.writeText(generatedLink);
-                  showToast('Meeting link copied to clipboard');
+                  showToast('Link copied!');
                 }}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '8px',
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #e8e4de',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  color: '#f48120',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  marginLeft: '8px',
-                  flexShrink: 0
-                }}
+                style={{ border: `1px solid ${border}`, background: bg }}
               >
-                <span className="icon" style={{ fontSize: '16px' }}>content_copy</span>
-                <span>Copy</span>
+                <span className="icon">content_copy</span>
+                Copy
               </button>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div className="hm-modal-actions">
               <button
                 type="button"
                 onClick={() => setShowLaterModal(false)}
-                style={{
-                  padding: '8px 18px',
-                  borderRadius: '10px',
-                  backgroundColor: '#1a1814',
-                  color: '#ffffff',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
               >
                 Done
               </button>
@@ -718,89 +621,50 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ─── Profile Name Edit Modal ─── */}
+      {/* NAME EDIT MODAL */}
       {isEditingName && (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '16px'
-          }}
+          className="hm-modal-overlay"
           onClick={() => setIsEditingName(false)}
         >
           <div
-            style={{
-              backgroundColor: '#ffffff',
-              borderRadius: '20px',
-              padding: '24px',
-              width: '100%',
-              maxWidth: '380px',
-              boxShadow: '0 20px 48px rgba(0,0,0,0.18)',
-              border: '1px solid #e8e4de'
-            }}
-            onClick={(e) => e.stopPropagation()}
+            className="hm-modal hm-name-modal"
+            style={{ background: bg, border: `1px solid ${border}` }}
+            onClick={(event) => event.stopPropagation()}
           >
-            <h3 style={{ fontSize: '17px', fontWeight: 700, margin: '0 0 10px 0', color: '#1a1814' }}>
-              Edit Your Display Name
-            </h3>
-            <p style={{ fontSize: '12px', color: '#6b6560', margin: '0 0 16px 0' }}>
-              This name will be displayed to all participants when you join meetings.
+            <h3 style={{ color: text }}>Edit Display Name</h3>
+            <p style={{ color: muted }}>
+              This name is shown to all participants.
             </p>
+
             <input
-              type="text"
               autoFocus
               value={tempName}
-              onChange={(e) => setTempName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSaveName();
-              }}
+              onChange={(event) => setTempName(event.target.value)}
+              onKeyDown={(event) =>
+                event.key === 'Enter' && handleSaveName()
+              }
               style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: '12px',
-                border: '1px solid #e8e4de',
-                fontSize: '14px',
-                color: '#1a1814',
-                outline: 'none',
-                boxSizing: 'border-box',
-                marginBottom: '20px'
+                color: text,
+                background: dark ? '#303134' : '#fff',
+                border: `1px solid ${border}`,
               }}
             />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+
+            <div className="hm-name-actions">
               <button
                 type="button"
                 onClick={() => setIsEditingName(false)}
                 style={{
-                  padding: '8px 16px',
-                  borderRadius: '10px',
-                  border: '1px solid #e8e4de',
-                  backgroundColor: '#ffffff',
-                  color: '#6b6560',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
+                  border: `1px solid ${border}`,
+                  color: muted,
+                  background: 'transparent',
                 }}
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={() => handleSaveName()}
-                style={{
-                  padding: '8px 18px',
-                  borderRadius: '10px',
-                  backgroundColor: '#f48120',
-                  color: '#ffffff',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
+
+              <button type="button" onClick={handleSaveName}>
                 Save
               </button>
             </div>
@@ -808,32 +672,736 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ─── Toast Notification ─── */}
+      {/* TOAST */}
       {toast && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: '24px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: '#1a1814',
-            color: '#ffffff',
-            padding: '10px 20px',
-            borderRadius: '12px',
-            fontSize: '13px',
-            fontWeight: 500,
-            boxShadow: '0 10px 28px rgba(0,0,0,0.25)',
-            zIndex: 1100,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            animation: 'fadeIn 0.2s ease-out'
-          }}
-        >
-          <span className="icon" style={{ fontSize: '18px', color: '#f48120' }}>info</span>
-          <span>{toast}</span>
+        <div className="hm-toast">
+          <span className="icon">info</span>
+          {toast}
         </div>
       )}
-    </div>
+
+      <style jsx global>{`
+        body:has(.hm-root) {
+          overflow-y: auto !important;
+          height: auto !important;
+        }
+
+        .hm-root,
+        .hm-root * {
+          box-sizing: border-box;
+        }
+
+        .hm-root {
+          width: 100%;
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          font-family: 'Google Sans', Roboto, Arial, sans-serif;
+        }
+
+        .hm-header {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          padding: 0 20px;
+          gap: 12px;
+          height: 60px;
+          position: sticky;
+          top: 0;
+          z-index: 40;
+          flex-shrink: 0;
+        }
+
+        .hm-brand {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+
+        .hm-brand img:first-child {
+          height: 24px;
+          width: auto;
+        }
+
+        .hm-brand img:last-child {
+          height: 16px;
+          width: auto;
+        }
+
+        .hm-center {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          min-width: 0;
+        }
+
+        .hm-join-form {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          height: 46px;
+          border-radius: 9999px;
+          padding: 4px 4px 4px 16px;
+          flex: 1;
+          max-width: 420px;
+          min-width: 0;
+        }
+
+        .hm-keyboard-icon {
+          font-size: 20px;
+          color: #5f6368;
+          flex-shrink: 0;
+        }
+
+        .hm-code-input {
+          flex: 1;
+          min-width: 0;
+          border: none;
+          outline: none;
+          background: transparent;
+          font-size: 15px;
+        }
+
+        .hm-join-button {
+          flex-shrink: 0;
+          height: 42px;
+          padding: 0 18px;
+          border-radius: 9999px;
+          border: none;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+        }
+
+        .hm-join-button:disabled {
+          cursor: default;
+        }
+
+        .hm-right {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-shrink: 0;
+        }
+
+        .hm-pill {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          height: 38px;
+          padding: 0 14px;
+          border-radius: 9999px;
+          border: none;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          white-space: nowrap;
+          flex-shrink: 0;
+          font-family: inherit;
+        }
+
+        .hm-pill-green {
+          background: #c4eed0;
+          color: #0b5726;
+        }
+
+        .hm-pill-blue {
+          background: #b8e0ff;
+          color: #004a77;
+        }
+
+        .hm-pill-outline {
+          background: transparent;
+          padding: 0 12px;
+          font-size: 12px;
+        }
+
+        .hm-icon-btn {
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+
+        .hm-theme-button {
+          border-radius: 50%;
+        }
+
+        .hm-profile {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 3px 10px 3px 4px;
+          border-radius: 20px;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+
+        .hm-avatar {
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          object-fit: cover;
+        }
+
+        .hm-profile-name {
+          font-size: 13px;
+          font-weight: 600;
+          max-width: 80px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .hm-guru-icon {
+          width: 14px;
+          height: 14px;
+        }
+
+        .hm-large-icon {
+          font-size: 24px;
+        }
+
+        .hm-time {
+          font-size: 12px;
+          font-weight: 500;
+          white-space: nowrap;
+        }
+
+        .hm-new-wrapper {
+          position: relative;
+          flex-shrink: 0;
+        }
+
+        /* The menu is rendered in a portal and positioned against the viewport. */
+        .hm-new-menu {
+          transform: none;
+          animation: hm-menu-enter 100ms ease-out;
+          transform-origin: top left;
+        }
+
+        @keyframes hm-menu-enter {
+          from {
+            opacity: 0.7;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        .hm-menu-item {
+          width: 100%;
+          padding: 10px 14px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          border: none;
+          background: transparent;
+          text-align: left;
+          cursor: pointer;
+          font-family: inherit;
+          font-size: 13px;
+          line-height: 1.4;
+          transition: background 0.12s ease;
+        }
+
+        .hm-menu-item:hover {
+          background: rgba(128, 128, 128, 0.1);
+        }
+
+        .hm-menu-icon {
+          font-size: 18px;
+          color: #89b754;
+          flex-shrink: 0;
+        }
+
+        .hm-menu-label {
+          min-width: 0;
+          white-space: normal;
+          overflow-wrap: anywhere;
+        }
+
+        .hm-date-strip {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 3%;
+          gap: 12px;
+          flex-wrap: wrap;
+          min-height: 68px;
+          background: transparent;
+        }
+
+        .hm-date-title {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 15px;
+          font-weight: 600;
+          letter-spacing: -0.3px;
+          white-space: nowrap;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+
+        .hm-date-picker {
+          display: flex;
+          align-items: center;
+          gap: 2px;
+        }
+
+        .hm-date-arrow {
+          width: 26px;
+          height: 26px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          flex-shrink: 0;
+          border-radius: 50%;
+        }
+
+        .hm-date-arrow:hover {
+          background: rgba(0, 0, 0, 0.06);
+        }
+
+        .hm-date-days {
+          display: flex;
+          align-items: center;
+          gap: 2px;
+        }
+
+        .hm-day {
+          width: 42px;
+          height: 52px;
+          flex-shrink: 0;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          gap: 2px;
+          border: none;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: background 0.15s;
+          font-family: inherit;
+        }
+
+        .hm-day:hover {
+          background: rgba(0, 0, 0, 0.05) !important;
+        }
+
+        .hm-day-label {
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.6px;
+          text-transform: uppercase;
+        }
+
+        .hm-day-num {
+          font-size: 15px;
+          font-weight: 500;
+        }
+
+        .hm-today-dot {
+          width: 4px;
+          height: 4px;
+          border-radius: 50%;
+          background: #89b754;
+          position: absolute;
+          bottom: 6px;
+        }
+
+        .hm-security {
+          margin: 14px 3%;
+          padding: 12px 18px;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          border-radius: 28px;
+          flex-wrap: wrap;
+        }
+
+        .hm-empty {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          padding: clamp(16px, 3vh, 40px) 20px;
+        }
+
+        .hm-empty-image {
+          width: min(340px, 80vw);
+          height: auto;
+          object-fit: contain;
+          user-select: none;
+          pointer-events: none;
+        }
+
+        .hm-empty h1 {
+          margin: 16px 0 0;
+          font-size: clamp(22px, 3vw, 36px);
+          font-weight: 400;
+          letter-spacing: -1.2px;
+          line-height: 1.2;
+        }
+
+        .hm-empty p {
+          margin: 12px 0 0;
+          font-size: clamp(14px, 1.4vw, 17px);
+        }
+
+        .hm-empty-new-wrapper {
+          position: relative;
+          margin-top: 24px;
+        }
+
+        .hm-empty-new-button {
+          height: 66px;
+          min-width: 140px;
+          padding: 0 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          border: none;
+          border-radius: 9999px;
+          background: #c4eed0;
+          color: #0b5726;
+          font-size: 19px;
+          font-weight: 500;
+          cursor: pointer;
+        }
+
+        .hm-footer {
+          width: 100%;
+          margin-top: auto;
+          padding: 16px;
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          justify-content: center;
+          gap: 10px 18px;
+          font-size: 12px;
+          text-align: center;
+        }
+
+        .hm-footer a {
+          color: inherit;
+          text-decoration: none;
+        }
+
+        .hm-copyright {
+          opacity: 0.6;
+        }
+
+        .hm-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.4);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 16px;
+        }
+
+        .hm-modal {
+          width: 100%;
+          max-width: 420px;
+          padding: 24px;
+          border-radius: 20px;
+          box-shadow: 0 20px 48px rgba(0, 0, 0, 0.18);
+        }
+
+        .hm-modal-heading {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 14px;
+        }
+
+        .hm-modal-heading h3,
+        .hm-name-modal h3 {
+          font-size: 17px;
+          font-weight: 700;
+          margin: 0;
+        }
+
+        .hm-close-button {
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: none;
+          border-radius: 50%;
+          background: transparent;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+
+        .hm-modal-description,
+        .hm-name-modal p {
+          font-size: 12px;
+          line-height: 1.5;
+          margin: 0 0 16px;
+        }
+
+        .hm-generated-link {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 10px 14px;
+          border-radius: 12px;
+          margin-bottom: 20px;
+        }
+
+        .hm-generated-link > span {
+          min-width: 0;
+          font-size: 13px;
+          font-weight: 500;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .hm-generated-link button {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 6px 12px;
+          border-radius: 8px;
+          color: #89b754;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+
+        .hm-modal-actions {
+          display: flex;
+          justify-content: flex-end;
+        }
+
+        .hm-modal-actions button,
+        .hm-name-actions button {
+          padding: 8px 18px;
+          border: none;
+          border-radius: 10px;
+          background: #1a1814;
+          color: #fff;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .hm-name-modal {
+          max-width: 380px;
+        }
+
+        .hm-name-modal h3 {
+          margin-bottom: 10px;
+        }
+
+        .hm-name-modal p {
+          margin-bottom: 16px;
+        }
+
+        .hm-name-modal input {
+          width: 100%;
+          padding: 10px 14px;
+          border-radius: 12px;
+          font-size: 14px;
+          outline: none;
+          margin-bottom: 20px;
+        }
+
+        .hm-name-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 8px;
+        }
+
+        .hm-name-actions button:first-child {
+          background: transparent;
+        }
+
+        .hm-name-actions button:last-child {
+          background: #89b754;
+        }
+
+        .hm-toast {
+          position: fixed;
+          bottom: 24px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: #1a1814;
+          color: #fff;
+          padding: 10px 20px;
+          border-radius: 12px;
+          font-size: 13px;
+          font-weight: 500;
+          box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+          z-index: 1100;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          max-width: calc(100vw - 24px);
+        }
+
+        .hm-toast .icon {
+          font-size: 18px;
+          color: #89b754;
+        }
+
+        @media (max-width: 960px) {
+          .hm-hide-md {
+            display: none !important;
+          }
+
+          .hm-join-form {
+            max-width: 300px;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .hm-header {
+            height: auto;
+            flex-wrap: wrap;
+            padding: 10px 12px;
+            gap: 8px;
+          }
+
+          .hm-center {
+            order: 3;
+            width: 100%;
+            justify-content: stretch;
+          }
+
+          .hm-join-form {
+            max-width: 100%;
+            flex: 1;
+            height: 42px;
+          }
+
+          .hm-hide-sm {
+            display: none !important;
+          }
+
+          .hm-right {
+            gap: 4px;
+          }
+
+          .hm-date-strip {
+            padding: 0 12px;
+            min-height: 60px;
+            gap: 8px;
+          }
+
+          .hm-date-title {
+            font-size: 15px;
+            gap: 8px;
+          }
+
+          .hm-date-days {
+            gap: 2px;
+          }
+
+          .hm-day {
+            width: clamp(32px, 11vw, 44px);
+            height: 50px;
+          }
+
+          .hm-day-num {
+            font-size: 14px;
+          }
+
+          .hm-security {
+            margin: 10px 12px;
+            padding: 10px 14px;
+            border-radius: 20px;
+            gap: 10px;
+          }
+
+          .hm-empty {
+            padding: 16px 20px;
+          }
+
+          .hm-empty-image {
+            width: min(280px, 75vw);
+          }
+
+          .hm-empty h1 {
+            font-size: clamp(20px, 6vw, 28px);
+            margin-top: 12px;
+          }
+
+          .hm-empty p {
+            font-size: 14px;
+            margin-top: 8px;
+          }
+
+          .hm-menu-item {
+            padding: 12px 14px;
+            font-size: 13px;
+          }
+        }
+
+        @media (max-width: 400px) {
+          .hm-hide-xs {
+            display: none !important;
+          }
+
+          .hm-day {
+            width: 30px;
+            height: 46px;
+            border-radius: 8px;
+          }
+
+          .hm-day-label {
+            font-size: 9px;
+          }
+
+          .hm-day-num {
+            font-size: 13px;
+          }
+
+          .hm-date-title {
+            font-size: 13px;
+          }
+
+          .hm-modal {
+            padding: 20px;
+          }
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+          .hm-empty {
+            padding: 16px 20px;
+          }
+
+          .hm-date-strip {
+            min-height: 52px;
+          }
+        }
+      `}</style>
+    </main>
   );
 }

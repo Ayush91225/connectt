@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { sfx } from '../../lib/audio';
 import { getDiceBearAvatar, getAvatarAccentColor, useAvatarPalette } from '../../lib/avatar';
 import MoreOptionsMenu from '../../components/MoreOptionsMenu';
+import PipPlaceholder from '../../components/PipWindow';
 import AudioQuickMenu from '../../components/AudioQuickMenu';
 import ScreenShareStage from '../../components/ScreenShareStage';
 import ActivitiesSidebar from '../../components/ActivitiesSidebar';
@@ -160,6 +161,8 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
 
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
+
+
   const [screenStream, setScreenStream] = useState(null);
   const [presentationMode, setPresentationMode] = useState(null); // 'screen', 'whiteboard', 'youtube', 'slides', 'chess', 'desmos_graph', 'desmos_sci'
   const [isCaptionsOn, setIsCaptionsOn] = useState(false);
@@ -189,11 +192,59 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
   const [toast, setToast] = useState(null);
   const [floatingEmojis, setFloatingEmojis] = useState([]);
 
+  const [pipActive, setPipActive] = useState(false);
+  const pipWinRef = useRef(null);
+  const pipVideoRef = useRef(null);
+
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
 
+
+  const handleToggleMicRef = useRef(null);
+  const handleToggleCameraRef = useRef(null);
+  const handleToggleScreenShareRef = useRef(null);
+  const handleEndCallRef = useRef(null);
+
+  // Keep pip video in sync with camera stream
+  useEffect(() => {
+    if (!pipActive || !pipVideoRef.current) return;
+    if (cameraStream && isCameraOn) {
+      pipVideoRef.current.srcObject = cameraStream;
+      pipVideoRef.current.play().catch(() => {});
+    } else {
+      pipVideoRef.current.srcObject = null;
+    }
+  }, [pipActive, cameraStream, isCameraOn]);
+
+  // Sync pip button states + avatar visibility
+  useEffect(() => {
+    const win = pipWinRef.current;
+    if (!pipActive || !win || win.closed) return;
+    const doc = win.document;
+    const btnMic = doc.querySelector('.pip-btn-mic');
+    const btnCam = doc.querySelector('.pip-btn-cam');
+    const btnPresent = doc.querySelector('.pip-btn-present');
+    const badge = doc.querySelector('.pip-mic-badge');
+    const avatarDiv = doc.querySelector('.pip-cam-off-avatar');
+    const pipVid = doc.querySelector('.pip-video-el');
+    if (btnMic) {
+      btnMic.className = `pip-btn pip-btn-mic${isMicOn ? '' : ' pip-btn-off'}`;
+      const ic = btnMic.querySelector('.icon'); if (ic) ic.textContent = isMicOn ? 'mic' : 'mic_off';
+    }
+    if (badge) {
+      badge.className = `pip-mic-badge${isMicOn ? '' : ' muted'}`;
+      const ic = badge.querySelector('.icon'); if (ic) ic.textContent = isMicOn ? 'mic' : 'mic_off';
+    }
+    if (btnCam) {
+      btnCam.className = `pip-btn pip-btn-cam${isCameraOn ? '' : ' pip-btn-off'}`;
+      const ic = btnCam.querySelector('.icon'); if (ic) ic.textContent = isCameraOn ? 'videocam' : 'videocam_off';
+    }
+    if (btnPresent) btnPresent.className = `pip-btn pip-btn-present${presentationMode === 'screen' ? ' pip-btn-active' : ''}`;
+    if (pipVid) pipVid.style.display = isCameraOn ? 'block' : 'none';
+    if (avatarDiv) avatarDiv.style.display = isCameraOn ? 'none' : 'flex';
+  }, [pipActive, isMicOn, isCameraOn, presentationMode]);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -359,6 +410,7 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
     sfx.playToggle(next);
     showToast(next ? 'Microphone on' : 'Microphone off');
   };
+  handleToggleMicRef.current = handleToggleMic;
 
   // Toggle Camera
   const handleToggleCamera = () => {
@@ -377,6 +429,7 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
     sfx.playToggle(next);
     showToast(next ? 'Camera on' : 'Camera off');
   };
+  handleToggleCameraRef.current = handleToggleCamera;
 
   // Real Screen Share toggle
   const handleToggleScreenShare = async () => {
@@ -411,6 +464,7 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
       showToast('You stopped presenting');
     }
   };
+  handleToggleScreenShareRef.current = handleToggleScreenShare;
 
   // Start Stage presentation from sidebar tools (Whiteboard, YouTube, Slides, Chess, Desmos, Flashcards)
   const handleStartStageSharing = (mode) => {
@@ -468,6 +522,7 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
   const handleEndCall = () => {
     setIsLeaveModalOpen(true);
   };
+  handleEndCallRef.current = handleEndCall;
 
   const confirmLeaveCall = () => {
     sfx.playLeave();
@@ -477,6 +532,7 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
   return (
     <div
       className={`call-container ${theme === 'light' ? 'light-theme' : ''}`}
+      style={{ height: '100dvh', overflow: 'hidden' }}
       onClick={() => {
         if (showMoreOptionsMenu) setShowMoreOptionsMenu(false);
         if (showAudioQuickMenu) setShowAudioQuickMenu(false);
@@ -484,7 +540,7 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
       }}
     >
       {/* Top Header */}
-      <header className="call-top-header">
+      <header className="call-top-header" style={{ flexShrink: 0 }}>
         <div className="call-info-left">
           {/* connectt.live Branding with Adaptive Colors in Room */}
           <div
@@ -600,12 +656,15 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
           background: (!isCameraOn && !presentationMode)
             ? (theme === 'light' ? '#fbfbfb' : avatarAccent.stageBg)
             : undefined,
-          transition: 'background 0.4s ease'
+          transition: 'background 0.4s ease',
+          minWidth: 0,
+          minHeight: 0
         }}
       >
 
         {presentationMode ? (
           /* Multi-Mode Presentation Stage (Screen Share, Excalidraw, YouTube, Slides, Chess, Desmos, Quiz, Timer) */
+          <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <ScreenShareStage
             theme={theme}
             mode={presentationMode}
@@ -621,6 +680,7 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
               setActiveActivity('timer');
             }}
           />
+          </div>
         ) : (
           <div className="call-video-grid-flex">
             {/* Main Video Tile with Avatar Accent */}
@@ -649,20 +709,22 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
               )}
 
               {/* Live Camera Stream */}
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                style={{
-                  display: isCameraOn ? 'block' : 'none',
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover'
-                }}
-              />
+              <div id="pip-video-slot" style={{ position: 'absolute', inset: 0 }}>
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  style={{
+                    display: isCameraOn ? 'block' : 'none',
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+              </div>
 
-              {/* Camera Off Avatar with Dynamic Profile-Inspired Accent */}
+              {/* Camera Off Avatar */}
               {!isCameraOn && (
                 <div className="call-camera-off-avatar" style={{ overflow: 'hidden', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <img
@@ -808,12 +870,110 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
         theme={theme}
         isOpen={showMoreOptionsMenu}
         onClose={() => setShowMoreOptionsMenu(false)}
+        isCaptionsOn={isCaptionsOn}
+        onToggleCaptions={handleToggleCaptions}
+        presentationMode={presentationMode}
+        onToggleScreenShare={handleToggleScreenShare}
+        isActivitiesOpen={isActivitiesOpen}
+        activeActivity={activeActivity}
+        onOpenActivity={(activity) => {
+          setIsActivitiesOpen(true);
+          setActiveActivity(activity);
+        }}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
         onAction={(act) => {
           if (act === 'pip') {
-            showToast('Picture-in-picture mode initiated');
-          } else if (act === 'adjust-view') {
-            setIsActivitiesOpen(true);
-            setActiveActivity('layout');
+            if (pipActive) { pipWinRef.current?.close(); return; }
+            if (!window.documentPictureInPicture) {
+              showToast('Document PiP not supported — try Chrome 116+');
+              return;
+            }
+            window.documentPictureInPicture.requestWindow({ width: 280, height: 380 })
+              .then((win) => {
+                pipWinRef.current = win;
+
+                // Copy stylesheets
+                [...document.styleSheets].forEach((sheet) => {
+                  try {
+                    const style = win.document.createElement('style');
+                    style.textContent = [...sheet.cssRules].map(r => r.cssText).join('\n');
+                    win.document.head.appendChild(style);
+                  } catch (e) {}
+                });
+                [...document.querySelectorAll('link[rel="stylesheet"]')].forEach((link) => {
+                  const clone = win.document.createElement('link');
+                  clone.rel = 'stylesheet'; clone.href = link.href;
+                  win.document.head.appendChild(clone);
+                });
+                win.document.body.style.cssText = 'margin:0;padding:0;overflow:hidden;';
+
+                // Inject pip-specific override sheet LAST — wins over all copied light-theme rules
+                const pipOverride = win.document.createElement('style');
+                pipOverride.textContent = `
+                  *, *::before, *::after { box-sizing: border-box; }
+                  html, body {
+                    margin: 0 !important; padding: 0 !important;
+                    background: #0e0f10 !important;
+                    color: #ffffff !important;
+                    overflow: hidden !important;
+                    font-family: 'Google Sans', Roboto, Arial, sans-serif !important;
+                  }
+                  .pip-video-container {
+                    width: 100vw !important; height: 100vh !important;
+                    position: relative !important; background: #0e0f10 !important;
+                    overflow: hidden !important;
+                  }
+                  .pip-overlay-controls { display: flex !important; }
+                  .call-container, .call-container.light-theme { all: unset !important; }
+                `;
+                win.document.head.appendChild(pipOverride);
+
+                // Build pip UI directly in pip window — never touch main React DOM
+                win.document.body.innerHTML = `
+                  <div class="pip-video-container">
+                    <video class="pip-video-el" autoplay playsinline muted
+                      style="width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:${isCameraOn ? 'block' : 'none'}"></video>
+                    <div class="pip-cam-off-avatar" style="display:${isCameraOn ? 'none' : 'flex'}">
+                      <img src="${getDiceBearAvatar(userName)}" alt="${userName}" class="pip-cam-off-img" />
+                    </div>
+                    <div class="pip-overlay-controls" style="display:flex">
+                      <div class="pip-overlay-name-row">
+                        <div class="pip-mic-badge${isMicOn ? '' : ' muted'}"><span class="icon" style="font-size:13px">${isMicOn ? 'mic' : 'mic_off'}</span></div>
+                        <span class="pip-name">${userName}</span>
+                      </div>
+                      <nav class="pip-overlay-nav">
+                        <button class="pip-btn pip-btn-mic${isMicOn ? '' : ' pip-btn-off'}"><span class="icon">${ isMicOn ? 'mic' : 'mic_off'}</span></button>
+                        <button class="pip-btn pip-btn-cam${isCameraOn ? '' : ' pip-btn-off'}"><span class="icon">${isCameraOn ? 'videocam' : 'videocam_off'}</span></button>
+                        <button class="pip-btn pip-btn-present${presentationMode === 'screen' ? ' pip-btn-active' : ''}"><span class="icon">present_to_all</span></button>
+                        <button class="pip-btn-leave"><span class="icon" style="transform:scaleX(-1)">call_end</span></button>
+                      </nav>
+                    </div>
+                  </div>`;
+
+                // Wire the pip video element
+                const pipVid = win.document.querySelector('.pip-video-el');
+                pipVideoRef.current = pipVid;
+                if (pipVid && cameraStream && isCameraOn) {
+                  pipVid.srcObject = cameraStream;
+                  pipVid.play().catch(() => {});
+                }
+
+                // Wire buttons via refs
+                win.document.querySelector('.pip-btn-mic')?.addEventListener('click', () => handleToggleMicRef.current?.());
+                win.document.querySelector('.pip-btn-cam')?.addEventListener('click', () => handleToggleCameraRef.current?.());
+                win.document.querySelector('.pip-btn-present')?.addEventListener('click', () => handleToggleScreenShareRef.current?.());
+                win.document.querySelector('.pip-btn-leave')?.addEventListener('click', () => handleEndCallRef.current?.());
+
+                setPipActive(true);
+                win.addEventListener('pagehide', () => {
+                  pipVideoRef.current = null;
+                  setPipActive(false);
+                  pipWinRef.current = null;
+                });
+                showToast('Your call is in another window');
+              })
+              .catch(() => showToast('PiP not supported in this browser'));
           } else if (act === 'effects') {
             setIsActivitiesOpen(true);
             setActiveActivity('settings');
@@ -877,196 +1037,237 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
         </div>
       )}
 
-      {/* Floating Bottom Bar: Center Dock + Right Dock */}
-      <footer className="call-dock-row" onClick={(e) => e.stopPropagation()}>
-        {/* Center Floating Dock */}
+      {/* Floating Bottom Bar */}
+      <footer className="call-dock-row" style={{ flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+
+        {/* RIGHT PILL — hidden on mobile (those actions move into MoreOptionsMenu) */}
+        <div className="call-right-action-pill call-hide-mobile">
+          <button
+            className={`call-right-pill-btn ${isActivitiesOpen && activeActivity === 'chat' ? 'active' : ''}`}
+            data-tooltip="Chat with everyone"
+            onClick={() => {
+              if (isActivitiesOpen && activeActivity === 'chat') { setIsActivitiesOpen(false); setActiveActivity(null); }
+              else { setIsActivitiesOpen(true); setActiveActivity('chat'); }
+            }}
+          ><span className="icon">chat</span></button>
+
+          <button
+            className={`call-right-pill-btn ${isActivitiesOpen && activeActivity !== 'chat' && activeActivity !== 'host_controls' ? 'active' : ''}`}
+            data-tooltip="Activities"
+            onClick={() => {
+              if (isActivitiesOpen && activeActivity !== 'chat' && activeActivity !== 'host_controls') { setIsActivitiesOpen(false); setActiveActivity(null); }
+              else { setIsActivitiesOpen(true); setActiveActivity(null); }
+            }}
+          ><span className="icon">apps</span></button>
+
+          <button
+            className={`call-right-pill-btn ${isActivitiesOpen && activeActivity === 'host_controls' ? 'active' : ''}`}
+            data-tooltip="Host controls"
+            onClick={() => {
+              if (isActivitiesOpen && activeActivity === 'host_controls') { setIsActivitiesOpen(false); setActiveActivity(null); }
+              else { setIsActivitiesOpen(true); setActiveActivity('host_controls'); }
+            }}
+          ><span className="icon">security</span></button>
+
+          <button
+            className={`call-right-pill-btn ${isFullscreen ? 'active' : ''}`}
+            data-tooltip={isFullscreen ? 'Exit full screen' : 'Full screen'}
+            onClick={toggleFullscreen}
+          ><span className="icon">{isFullscreen ? 'fullscreen_exit' : 'fullscreen'}</span></button>
+        </div>
+
+        {/* CENTER DOCK — on mobile this is the ONLY row, matching Google Meet mobile */}
         <div className="call-floating-dock">
-          {/* Split Mic Button with ^ */}
+
+          {/* Mic (split: ^ + mic button) */}
           <div className="call-split-dock-group">
             <button
               className="call-split-chevron"
-              onClick={() => {
-                setShowAudioQuickMenu(!showAudioQuickMenu);
-                setShowMoreOptionsMenu(false);
-                setShowQuickVideoBar(false);
-              }}
+              onClick={() => { setShowAudioQuickMenu(!showAudioQuickMenu); setShowMoreOptionsMenu(false); setShowQuickVideoBar(false); }}
               title="Microphone settings"
-            >
-              <span className="icon">keyboard_arrow_up</span>
-            </button>
+            ><span className="icon">keyboard_arrow_up</span></button>
             <button
               className="call-dock-circle-btn"
-              style={{ background: 'transparent' }}
               data-tooltip={isMicOn ? 'Turn off microphone (⌘+D)' : 'Turn on microphone (⌘+D)'}
               onClick={handleToggleMic}
             >
               <span className="icon">{isMicOn ? 'mic' : 'mic_off'}</span>
               {micPermission === 'denied' && (
-                <span
-                  className="call-alert-exclamation-dot"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setPermissionModalType('mic');
-                  }}
-                  title="Microphone blocked. Click to fix permissions"
-                >!</span>
+                <span className="call-alert-exclamation-dot" onClick={(e) => { e.stopPropagation(); setPermissionModalType('mic'); }}>!</span>
               )}
             </button>
           </div>
 
-          {/* Split Camera Button with ^ */}
+          {/* Camera (split: ^ + cam button) */}
           <div className="call-split-dock-group">
             <button
               className="call-split-chevron"
-              onClick={() => {
-                setShowQuickVideoBar(!showQuickVideoBar);
-                setShowAudioQuickMenu(false);
-                setShowMoreOptionsMenu(false);
-              }}
+              onClick={() => { setShowQuickVideoBar(!showQuickVideoBar); setShowAudioQuickMenu(false); setShowMoreOptionsMenu(false); }}
               title="Camera options"
-            >
-              <span className="icon">keyboard_arrow_up</span>
-            </button>
+            ><span className="icon">keyboard_arrow_up</span></button>
             <button
               className="call-dock-circle-btn"
-              style={{ background: 'transparent' }}
               data-tooltip={isCameraOn ? 'Turn off camera (⌘+E)' : 'Turn on camera (⌘+E)'}
               onClick={handleToggleCamera}
             >
               <span className="icon">{isCameraOn ? 'videocam' : 'videocam_off'}</span>
               {cameraPermission === 'denied' && (
-                <span
-                  className="call-alert-exclamation-dot"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setPermissionModalType('camera');
-                  }}
-                  title="Camera blocked. Click to fix permissions"
-                >!</span>
+                <span className="call-alert-exclamation-dot" onClick={(e) => { e.stopPropagation(); setPermissionModalType('camera'); }}>!</span>
               )}
             </button>
           </div>
 
-          {/* Real Screen Share */}
+          {/* Present — desktop only */}
           <button
-            className={`call-dock-circle-btn ${presentationMode === 'screen' ? 'active-blue' : ''}`}
+            className={`call-dock-circle-btn call-hide-mobile ${presentationMode === 'screen' ? 'active-blue' : ''}`}
             data-tooltip={presentationMode === 'screen' ? 'Stop presenting' : 'Present now'}
             onClick={handleToggleScreenShare}
-          >
-            <span className="icon">present_to_all</span>
-          </button>
+          ><span className="icon">present_to_all</span></button>
 
-          {/* Emoji Reactions */}
+          {/* Reactions */}
           <button
             className="call-dock-circle-btn"
             data-tooltip="Send a reaction"
             onClick={() => setShowReactions(!showReactions)}
-          >
-            <span className="icon">sentiment_satisfied</span>
-          </button>
+          ><span className="icon">sentiment_satisfied</span></button>
 
-          {/* Closed Captions */}
+          {/* Captions — desktop only */}
           <button
-            className={`call-dock-circle-btn ${isCaptionsOn ? 'active-blue' : ''}`}
+            className={`call-dock-circle-btn call-hide-mobile ${isCaptionsOn ? 'active-blue' : ''}`}
             data-tooltip="Turn on captions (c)"
             onClick={handleToggleCaptions}
-          >
-            <span className="icon">closed_caption</span>
-          </button>
+          ><span className="icon">closed_caption</span></button>
 
           {/* Raise Hand */}
           <button
             className={`call-dock-circle-btn ${isHandRaised ? 'active-blue' : ''}`}
             data-tooltip="Raise hand"
             onClick={handleToggleHand}
-          >
-            <span className="icon">back_hand</span>
-          </button>
+          ><span className="icon">back_hand</span></button>
 
-          {/* More options */}
-          <button
-            className={`call-dock-circle-btn ${showMoreOptionsMenu ? 'active-blue' : ''}`}
-            data-tooltip="More options"
-            onClick={() => {
-              setShowMoreOptionsMenu(!showMoreOptionsMenu);
-              setShowAudioQuickMenu(false);
-              setShowQuickVideoBar(false);
-            }}
-          >
-            <span className="icon">more_vert</span>
-          </button>
+          {/* More options — always visible, on mobile contains all hidden tools */}
+          <div style={{ position: 'relative' }}>
+            <button
+              className={`call-dock-circle-btn ${showMoreOptionsMenu ? 'active-blue' : ''}`}
+              data-tooltip="More options"
+              onClick={() => { setShowMoreOptionsMenu(!showMoreOptionsMenu); setShowAudioQuickMenu(false); setShowQuickVideoBar(false); }}
+            ><span className="icon">more_vert</span></button>
+            <MoreOptionsMenu
+              theme={theme}
+              isOpen={showMoreOptionsMenu}
+              onClose={() => setShowMoreOptionsMenu(false)}
+              isCaptionsOn={isCaptionsOn}
+              onToggleCaptions={handleToggleCaptions}
+              presentationMode={presentationMode}
+              onToggleScreenShare={handleToggleScreenShare}
+              isActivitiesOpen={isActivitiesOpen}
+              activeActivity={activeActivity}
+              onOpenActivity={(activity) => {
+                setIsActivitiesOpen(true);
+                setActiveActivity(activity);
+              }}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={toggleFullscreen}
+              onAction={(act) => {
+                if (act === 'pip') {
+                  if (pipActive) { pipWinRef.current?.close(); return; }
+                  if (!window.documentPictureInPicture) {
+                    showToast('Document PiP not supported — try Chrome 116+');
+                    return;
+                  }
+                  window.documentPictureInPicture.requestWindow({ width: 280, height: 380 })
+                    .then((win) => {
+                      pipWinRef.current = win;
+                      [...document.styleSheets].forEach((sheet) => {
+                        try {
+                          const style = win.document.createElement('style');
+                          style.textContent = [...sheet.cssRules].map(r => r.cssText).join('\n');
+                          win.document.head.appendChild(style);
+                        } catch (e) {}
+                      });
+                      [...document.querySelectorAll('link[rel="stylesheet"]')].forEach((link) => {
+                        const clone = win.document.createElement('link');
+                        clone.rel = 'stylesheet'; clone.href = link.href;
+                        win.document.head.appendChild(clone);
+                      });
+                      win.document.body.style.cssText = 'margin:0;padding:0;overflow:hidden;';
+                      const pipOverride = win.document.createElement('style');
+                      pipOverride.textContent = `
+                        *, *::before, *::after { box-sizing: border-box; }
+                        html, body {
+                          margin: 0 !important; padding: 0 !important;
+                          background: #0e0f10 !important;
+                          color: #ffffff !important;
+                          overflow: hidden !important;
+                          font-family: 'Google Sans', Roboto, Arial, sans-serif !important;
+                        }
+                        .pip-video-container {
+                          width: 100vw !important; height: 100vh !important;
+                          position: relative !important; background: #0e0f10 !important;
+                          overflow: hidden !important;
+                        }
+                        .pip-overlay-controls { display: flex !important; }
+                        .call-container, .call-container.light-theme { all: unset !important; }
+                      `;
+                      win.document.head.appendChild(pipOverride);
+                      win.document.body.innerHTML = `
+                        <div class="pip-video-container">
+                          <video class="pip-video-el" autoplay playsinline muted
+                            style="width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:${isCameraOn ? 'block' : 'none'}"></video>
+                          <div class="pip-cam-off-avatar" style="display:${isCameraOn ? 'none' : 'flex'}">
+                            <img src="${getDiceBearAvatar(userName)}" alt="${userName}" class="pip-cam-off-img" />
+                          </div>
+                          <div class="pip-overlay-controls" style="display:flex">
+                            <div class="pip-overlay-name-row">
+                              <div class="pip-mic-badge${isMicOn ? '' : ' muted'}"><span class="icon" style="font-size:13px">${isMicOn ? 'mic' : 'mic_off'}</span></div>
+                              <span class="pip-name">${userName}</span>
+                            </div>
+                            <nav class="pip-overlay-nav">
+                              <button class="pip-btn pip-btn-mic${isMicOn ? '' : ' pip-btn-off'}"><span class="icon">${isMicOn ? 'mic' : 'mic_off'}</span></button>
+                              <button class="pip-btn pip-btn-cam${isCameraOn ? '' : ' pip-btn-off'}"><span class="icon">${isCameraOn ? 'videocam' : 'videocam_off'}</span></button>
+                              <button class="pip-btn pip-btn-present${presentationMode === 'screen' ? ' pip-btn-active' : ''}"><span class="icon">present_to_all</span></button>
+                              <button class="pip-btn-leave"><span class="icon" style="transform:scaleX(-1)">call_end</span></button>
+                            </nav>
+                          </div>
+                        </div>`;
+                      const pipVid = win.document.querySelector('.pip-video-el');
+                      pipVideoRef.current = pipVid;
+                      if (pipVid && cameraStream && isCameraOn) {
+                        pipVid.srcObject = cameraStream;
+                        pipVid.play().catch(() => {});
+                      }
+                      win.document.querySelector('.pip-btn-mic')?.addEventListener('click', () => handleToggleMicRef.current?.());
+                      win.document.querySelector('.pip-btn-cam')?.addEventListener('click', () => handleToggleCameraRef.current?.());
+                      win.document.querySelector('.pip-btn-present')?.addEventListener('click', () => handleToggleScreenShareRef.current?.());
+                      win.document.querySelector('.pip-btn-leave')?.addEventListener('click', () => handleEndCallRef.current?.());
+                      setPipActive(true);
+                      win.addEventListener('pagehide', () => {
+                        pipVideoRef.current = null;
+                        setPipActive(false);
+                        pipWinRef.current = null;
+                      });
+                      showToast('Your call is in another window');
+                    })
+                    .catch(() => showToast('PiP not supported in this browser'));
+                } else if (act === 'effects') {
+                  setIsActivitiesOpen(true);
+                  setActiveActivity('settings');
+                } else if (act === 'settings') {
+                  setIsActivitiesOpen(true);
+                  setActiveActivity('settings');
+                }
+              }}
+              showToast={showToast}
+            />
+          </div>
 
-          {/* Leave Call */}
+          {/* Leave */}
           <button
             className="call-leave-pill-btn"
             data-tooltip="Leave call"
             onClick={handleEndCall}
-          >
-            <span className="icon">call_end</span>
-          </button>
-        </div>
+          ><span className="icon">call_end</span></button>
 
-        {/* Floating Right Dock (Chat, Activities, Host controls) */}
-        <div className="call-right-action-pill">
-          {/* In-call Chat Button */}
-          <button
-            className={`call-right-pill-btn ${isActivitiesOpen && activeActivity === 'chat' ? 'active' : ''}`}
-            data-tooltip="Chat with everyone"
-            onClick={() => {
-              if (isActivitiesOpen && activeActivity === 'chat') {
-                setIsActivitiesOpen(false);
-                setActiveActivity(null);
-              } else {
-                setIsActivitiesOpen(true);
-                setActiveActivity('chat');
-              }
-            }}
-          >
-            <span className="icon">chat</span>
-          </button>
-
-          {/* Activities Button */}
-          <button
-            className={`call-right-pill-btn ${isActivitiesOpen && activeActivity !== 'chat' && activeActivity !== 'host_controls' ? 'active' : ''}`}
-            data-tooltip="Activities"
-            onClick={() => {
-              if (isActivitiesOpen && activeActivity !== 'chat' && activeActivity !== 'host_controls') {
-                setIsActivitiesOpen(false);
-                setActiveActivity(null);
-              } else {
-                setIsActivitiesOpen(true);
-                setActiveActivity(null);
-              }
-            }}
-          >
-            <span className="icon">apps</span>
-          </button>
-
-          {/* Host Controls */}
-          <button
-            className={`call-right-pill-btn ${isActivitiesOpen && activeActivity === 'host_controls' ? 'active' : ''}`}
-            data-tooltip="Host controls"
-            onClick={() => {
-              if (isActivitiesOpen && activeActivity === 'host_controls') {
-                setIsActivitiesOpen(false);
-                setActiveActivity(null);
-              } else {
-                setIsActivitiesOpen(true);
-                setActiveActivity('host_controls');
-              }
-            }}
-          >
-            <span className="icon">security</span>
-          </button>
-
-          {/* Fullscreen Toggle */}
-          <button
-            className={`call-right-pill-btn ${isFullscreen ? 'active' : ''}`}
-            data-tooltip={isFullscreen ? 'Exit full screen' : 'Full screen'}
-            onClick={toggleFullscreen}
-          >
-            <span className="icon">{isFullscreen ? 'fullscreen_exit' : 'fullscreen'}</span>
-          </button>
         </div>
       </footer>
 
@@ -1174,6 +1375,16 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
       )}
 
 
+
+      {/* PiP active — show placeholder in main window */}
+      {pipActive && (
+        <PipPlaceholder
+          userName={userName}
+          getDiceBearAvatar={getDiceBearAvatar}
+          onReturnToTab={() => { pipWinRef.current?.focus(); }}
+          theme={theme}
+        />
+      )}
 
       {/* Toast Notification */}
       {toast && (

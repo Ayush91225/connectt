@@ -27,6 +27,42 @@ export default function ScreenShareStage({
   const [isAudioSharing, setIsAudioSharing] = useState(true);
   const pipVideoRef = useRef(null);
   const screenVideoRef = useRef(null);
+  const pipRef = useRef(null);
+  const dragState = useRef(null);
+  const [pipPos, setPipPos] = useState({ right: 20, bottom: 20 });
+
+  const onPointerDown = (e) => {
+    e.preventDefault();
+    const el = pipRef.current;
+    const rect = el.getBoundingClientRect();
+    const parent = el.offsetParent.getBoundingClientRect();
+    dragState.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origRight: parent.right - rect.right,
+      origBottom: parent.bottom - rect.bottom,
+    };
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
+
+  const onPointerMove = (e) => {
+    if (!dragState.current) return;
+    const { startX, startY, origRight, origBottom } = dragState.current;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    const el = pipRef.current;
+    const parent = el.offsetParent.getBoundingClientRect();
+    const newRight = Math.max(8, Math.min(parent.width - el.offsetWidth - 8, origRight - dx));
+    const newBottom = Math.max(8, Math.min(parent.height - el.offsetHeight - 8, origBottom - dy));
+    setPipPos({ right: newRight, bottom: newBottom });
+  };
+
+  const onPointerUp = () => {
+    dragState.current = null;
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+  };
 
   // Bind local camera stream to PIP tile
   useEffect(() => {
@@ -59,60 +95,85 @@ export default function ScreenShareStage({
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
       {/* Top Presentation Bar */}
-      <div
-        className="gm-presentation-top-pill"
-        style={{
-          backgroundColor: theme === 'light' ? '#ffffff' : '#28292a',
-          border: theme === 'light' ? '1px solid #e8e4de' : '1px solid rgba(255, 255, 255, 0.08)',
-          boxShadow: theme === 'light' ? '0 4px 16px rgba(0,0,0,0.06)' : '0 4px 16px rgba(0,0,0,0.4)'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {mode === 'code' ? (
-            <img src="/rux.png" alt="RUX" style={{ width: '18px', height: '18px', borderRadius: '4px' }} />
-          ) : (
-            <span className="icon" style={{ fontSize: '18px', color: theme === 'light' ? '#f48120' : '#c2e7ff' }}>
-              {mode === 'whiteboard' ? 'gesture'
-                : mode === 'youtube' ? 'smart_display'
-                : mode === 'slides' ? 'co_present'
-                : mode === 'chess' ? 'sports_esports'
-                : mode === 'desmos_graph' ? 'show_chart'
-                : mode === 'desmos_sci' ? 'functions'
-                : mode === 'flashcards' ? 'style'
-                : mode === 'quiz' ? 'quiz'
-                : mode === 'timer' ? 'timer'
-                : 'present_to_all'}
-            </span>
-          )}
-          <span style={{ fontSize: '13px', fontWeight: 500, color: theme === 'light' ? '#1a1814' : '#ffffff' }}>
-            {userName} (You, presenting {getModeTitle()})
-          </span>
-        </div>
-
-        <span style={{ color: theme === 'light' ? '#e8e4de' : 'rgba(255,255,255,0.2)' }}>|</span>
-
-        {/* Presentation Audio Toggle Switch */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '13px', color: theme === 'light' ? '#6b6560' : '#c4c7c5' }}>Presentation audio</span>
-          <label className="m3-switch">
-            <input
-              type="checkbox"
-              checked={isAudioSharing}
-              onChange={() => setIsAudioSharing(!isAudioSharing)}
-            />
-            <span className="m3-slider round"></span>
-          </label>
-        </div>
-
-        {/* Stop Presenting Pill Button */}
-        <button
-          className="gm-btn-stop-presenting-pill"
-          onClick={onStopPresenting}
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 16px 8px', flexShrink: 0 }}>
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            backgroundColor: theme === 'light' ? '#ffffff' : '#28292a',
+            border: theme === 'light' ? '1px solid #e8e4de' : '1px solid rgba(255,255,255,0.08)',
+            boxShadow: theme === 'light' ? '0 2px 12px rgba(0,0,0,0.08)' : '0 4px 16px rgba(0,0,0,0.5)',
+            borderRadius: '9999px',
+            padding: '6px 6px 6px 14px',
+            maxWidth: '100%',
+            flexWrap: 'wrap',
+            rowGap: '6px',
+          }}
         >
-          Stop presenting
-        </button>
+          {/* Mode icon + label */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', paddingRight: '2px' }}>
+            {mode === 'code' ? (
+              <img src="/rux.png" alt="RUX" style={{ width: '16px', height: '16px', borderRadius: '4px' }} />
+            ) : (
+              <span className="icon" style={{ fontSize: '16px', color: theme === 'light' ? '#f48120' : '#89b754' }}>
+                {mode === 'whiteboard' ? 'gesture'
+                  : mode === 'youtube' ? 'smart_display'
+                  : mode === 'slides' ? 'co_present'
+                  : mode === 'chess' ? 'sports_esports'
+                  : mode === 'desmos_graph' ? 'show_chart'
+                  : mode === 'desmos_sci' ? 'functions'
+                  : mode === 'flashcards' ? 'style'
+                  : mode === 'quiz' ? 'quiz'
+                  : mode === 'timer' ? 'timer'
+                  : 'present_to_all'}
+              </span>
+            )}
+            <span style={{ fontSize: '13px', fontWeight: 500, color: theme === 'light' ? '#1a1814' : '#e3e3e3', whiteSpace: 'nowrap' }}>
+              {getModeTitle()}
+            </span>
+          </div>
+
+          {/* Divider */}
+          <div style={{ width: '1px', height: '18px', backgroundColor: theme === 'light' ? '#e8e4de' : 'rgba(255,255,255,0.12)', flexShrink: 0 }} />
+
+          {/* Audio toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '0 4px' }}>
+            <span className="icon" style={{ fontSize: '15px', color: isAudioSharing ? '#89b754' : (theme === 'light' ? '#a8a39d' : '#5f6368') }}>
+              {isAudioSharing ? 'volume_up' : 'volume_off'}
+            </span>
+            <label className="m3-switch" style={{ transform: 'scale(0.85)', transformOrigin: 'center' }}>
+              <input type="checkbox" checked={isAudioSharing} onChange={() => setIsAudioSharing(!isAudioSharing)} />
+              <span className="m3-slider round" />
+            </label>
+          </div>
+
+          {/* Divider */}
+          <div style={{ width: '1px', height: '18px', backgroundColor: theme === 'light' ? '#e8e4de' : 'rgba(255,255,255,0.12)', flexShrink: 0 }} />
+
+          {/* Stop button */}
+          <button
+            onClick={onStopPresenting}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '5px',
+              padding: '7px 14px',
+              borderRadius: '9999px',
+              backgroundColor: '#ea4335',
+              color: '#fff',
+              fontSize: '12px',
+              fontWeight: 600,
+              border: 'none',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+            }}
+          >
+            <span className="icon" style={{ fontSize: '14px' }}>stop_screen_share</span>
+            Stop
+          </button>
+        </div>
       </div>
 
       {/* Main Presentation Surface */}
@@ -212,8 +273,13 @@ export default function ScreenShareStage({
           </div>
         )}
 
-        {/* Floating Bottom-Right PIP Camera Tile (LOCAL WEBCAM) */}
-        <div className="gm-floating-pip-cam-tile">
+        {/* Floating Draggable PIP Camera Tile (LOCAL WEBCAM) */}
+        <div
+          ref={pipRef}
+          className="gm-floating-pip-cam-tile"
+          onPointerDown={onPointerDown}
+          style={{ right: pipPos.right, bottom: pipPos.bottom, cursor: 'grab' }}
+        >
           <video
             ref={pipVideoRef}
             autoPlay

@@ -153,7 +153,7 @@ export default function GuruAIPanel({ isOpen, onClose, userName = 'Ayushmaan' })
           right: 0,
           bottom: 0,
           width: '100%',
-          maxWidth: '420px',
+          maxWidth: 'min(420px, 100vw)',
           backgroundColor: '#ffffff',
           borderLeft: '1px solid #e8e4de',
           zIndex: 999,

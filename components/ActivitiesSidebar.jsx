@@ -31,6 +31,15 @@ export default function ActivitiesSidebar({
 
   const [speechLang, setSpeechLang] = useState('Spanish (es)');
 
+  // Report a problem state
+  const [reportWhat, setReportWhat] = useState('');
+  const [reportDesc, setReportDesc] = useState('');
+  const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [reportOptIn, setReportOptIn] = useState(false);
+  const [reportScreenshot, setReportScreenshot] = useState(null);
+  const [reportType, setReportType] = useState(null); // null | 'issue' | 'suggest'
+  const reportFileRef = useRef(null);
+
   // Host Controls State
   const [hostManagement, setHostManagement] = useState(true);
   const [allowShareScreen, setAllowShareScreen] = useState(true);
@@ -276,8 +285,7 @@ export default function ActivitiesSidebar({
       className={`google-meet-sidebar-aside ${isOpen ? 'open' : ''} ${isLight ? 'light-theme' : ''}`}
       style={{
         display: isOpen ? 'flex' : 'none',
-        width: '360px',
-        minWidth: '360px',
+        width: 'min(360px, 100vw)',
         backgroundColor: cBg,
         borderRadius: '16px',
         border: `1px solid ${cBorder}`,
@@ -300,9 +308,19 @@ export default function ActivitiesSidebar({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {activeActivity && (
+          {activeActivity && activeActivity !== 'chat' && (
             <button
-              onClick={() => onSelectActivity(null)}
+              onClick={() => {
+              if (activeActivity === 'report' && reportType !== null) {
+                setReportType(null);
+                setReportWhat('');
+                setReportDesc('');
+                setReportOptIn(false);
+                setReportScreenshot(null);
+              } else {
+                onSelectActivity(null);
+              }
+            }}
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -336,6 +354,7 @@ export default function ActivitiesSidebar({
               : activeActivity === 'quiz' ? 'Live Quiz'
               : activeActivity === 'flashcards' ? 'Flashcards'
               : activeActivity === 'settings' ? 'Settings'
+              : activeActivity === 'report' ? 'Report a problem'
               : 'Activities'}
           </h2>
         </div>
@@ -365,203 +384,58 @@ export default function ActivitiesSidebar({
 
       {/* Main Content Area */}
       {!activeActivity ? (
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {/* ALWAYS ON CLOUD RECORDING CARD */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column' }}>
+          {/* Pill 1: Recording */}
           <div
             style={{
-              backgroundColor: cCard, border: `1px solid ${cBorder}`, boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
-              borderRadius: '28px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+              backgroundColor: cCard, border: `1px solid ${cBorder}`,
+              borderRadius: '28px', padding: '14px 20px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div
-                style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, rgba(234, 67, 53, 0.15), rgba(234, 67, 53, 0.05))',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <span className="icon filled" style={{ color: '#ea4335', fontSize: '20px' }}>
-                  radio_button_checked
-                </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(234,67,53,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className="icon filled" style={{ color: '#ea4335', fontSize: '20px' }}>radio_button_checked</span>
               </div>
               <div>
-                <div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>
-                  Recording
-                </div>
-                <div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>
-                  Always on • Cloud storage active
-                </div>
+                <div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Recording</div>
+                <div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Cloud · Always on</div>
               </div>
             </div>
-
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '4px 10px',
-                borderRadius: '12px',
-                backgroundColor: 'rgba(234, 67, 53, 0.15)',
-                color: '#f28b82',
-                fontSize: '11px',
-                fontWeight: 600
-              }}
-            >
-              <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#ea4335', animation: 'bounceDot 1.5s infinite ease-in-out' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '8px', backgroundColor: 'rgba(234,67,53,0.08)', color: '#c4756e', fontSize: '11px', fontWeight: 600 }}>
+              <div style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#ea4335' }} />
               <span>REC</span>
             </div>
-          </div>
-
-          {/* Pill 1: Speech translation */}
-          <div
-            onClick={() => { onSelectActivity('translation'); sfx.playToggle(true); }}
-            style={{
-              backgroundColor: cCard, border: `1px solid ${cBorder}`, boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
-              borderRadius: '28px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'background 0.2s, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(124, 172, 248, 0.12), rgba(124, 172, 248, 0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="icon" style={{ color: '#7cacf8', fontSize: '20px' }}>translate</span>
-              </div>
-              <div>
-                <div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Speech translation</div>
-                <div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Limited access</div>
-              </div>
-            </div>
-            <span className="icon" style={{ color: cSubtle, fontSize: '20px' }}>chevron_right</span>
           </div>
 
           {/* Pill 2: Timer */}
           <div
             onClick={() => { onSelectActivity('timer'); sfx.playToggle(true); }}
-            style={{
-              backgroundColor: cCard, border: `1px solid ${cBorder}`, boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
-              borderRadius: '28px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'background 0.2s, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
-            }}
+            style={{ backgroundColor: cCard, border: `1px solid ${cBorder}`, borderRadius: '28px', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'background 0.2s', marginBottom: '8px' }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
-              <div
-                style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  background: isAlarmRinging
-                    ? 'rgba(234, 67, 53, 0.22)'
-                    : 'linear-gradient(135deg, rgba(168, 205, 237, 0.16), rgba(168, 205, 237, 0.04))',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <span
-                  className="icon"
-                  style={{ color: isAlarmRinging ? '#ea4335' : '#a8cded', fontSize: '20px' }}
-                >
-                  {isAlarmRinging ? 'alarm' : 'timer'}
-                </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1 }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: isAlarmRinging ? 'rgba(234,67,53,0.22)' : 'rgba(168,205,237,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className="icon" style={{ color: isAlarmRinging ? '#ea4335' : '#a8cded', fontSize: '20px' }}>{isAlarmRinging ? 'alarm' : 'timer'}</span>
               </div>
               <div>
                 <div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Timer</div>
-                <div
-                  style={{
-                    fontSize: '12px',
-                    color: isAlarmRinging ? '#ea4335' : cSubtle,
-                    marginTop: '2px',
-                    fontWeight: isAlarmRinging ? 600 : 400
-                  }}
-                >
-                  {isAlarmRinging
-                    ? "⏰ Time's Up! Alarm ringing"
-                    : isTimerRunning
-                    ? `Running • ${formatTimer(timerSeconds)}`
-                    : 'Configure in sidebar • Play on stage'}
-                </div>
+                <div style={{ fontSize: '12px', color: isAlarmRinging ? '#ea4335' : cSubtle, marginTop: '2px' }}>{isAlarmRinging ? "⏰ Time's Up!" : isTimerRunning ? `Running · ${formatTimer(timerSeconds)}` : 'Configure & play on stage'}</div>
               </div>
             </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (isAlarmRinging) {
-                    stopAlarm?.();
-                  } else {
-                    startTimer?.(true);
-                  }
-                  sfx.playToggle(true);
-                }}
-                title={isAlarmRinging ? 'Stop Alarm' : 'Play Timer on Stage'}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '12px',
-                  backgroundColor: isAlarmRinging ? 'rgba(234, 67, 53, 0.2)' : 'rgba(168, 205, 237, 0.16)',
-                  color: isAlarmRinging ? '#ff8a80' : '#a8cded',
-                  border: isAlarmRinging ? '1px solid rgba(234, 67, 53, 0.4)' : '1px solid rgba(168, 205, 237, 0.3)',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <span className="icon" style={{ fontSize: '13px' }}>
-                  {isAlarmRinging ? 'notifications_off' : 'play_arrow'}
-                </span>
-                <span>{isAlarmRinging ? 'Stop' : 'Stage'}</span>
-              </button>
-              <span className="icon" style={{ color: cSubtle, fontSize: '20px' }}>chevron_right</span>
-            </div>
+            <span className="icon" style={{ color: cSubtle, fontSize: '20px' }}>chevron_right</span>
           </div>
 
-          {/* Pill 3: Whiteboard (Excalidraw Package -> Full Stage) */}
+          {/* Pill 3: Whiteboard */}
           <div
-            onClick={() => {
-              onStartStageSharing?.('whiteboard');
-              sfx.playToggle(true);
-            }}
-            style={{
-              backgroundColor: cCard, border: `1px solid ${cBorder}`, boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
-              borderRadius: '28px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'background 0.2s, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
-            }}
+            onClick={() => { onStartStageSharing?.('whiteboard'); sfx.playToggle(true); }}
+            style={{ backgroundColor: cCard, border: `1px solid ${cBorder}`, borderRadius: '28px', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'background 0.2s', marginBottom: '8px' }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(137, 183, 84, 0.14), rgba(137, 183, 84, 0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(137,183,84,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span className="icon" style={{ color: '#89b754', fontSize: '20px' }}>gesture</span>
               </div>
               <div>
@@ -574,24 +448,12 @@ export default function ActivitiesSidebar({
 
           {/* Pill 3b: RUX Code Studio */}
           <div
-            onClick={() => {
-              onStartStageSharing?.('code');
-              sfx.playToggle(true);
-            }}
-            style={{
-              backgroundColor: cCard, border: `1px solid ${cBorder}`, boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
-              borderRadius: '28px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'background-color 0.15s ease'
-            }}
+            onClick={() => { onStartStageSharing?.('code'); sfx.playToggle(true); }}
+            style={{ backgroundColor: cCard, border: `1px solid ${cBorder}`, borderRadius: '28px', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'background 0.2s', marginBottom: '8px' }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
               <div style={{ width: '38px', height: '38px', borderRadius: '8px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: isLight ? '#f5f3ef' : '#0d1117', border: `1px solid ${cBorder}` }}>
                 <img src="/rux.png" alt="RUX" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
               </div>
@@ -603,27 +465,15 @@ export default function ActivitiesSidebar({
             <span className="icon" style={{ color: cSubtle, fontSize: '20px' }}>open_in_new</span>
           </div>
 
-          {/* Pill 3c: YouTube Watch Party */}
+          {/* Pill 3c: YouTube */}
           <div
-            onClick={() => {
-              onStartStageSharing?.('youtube');
-              sfx.playToggle(true);
-            }}
-            style={{
-              backgroundColor: cCard, border: `1px solid ${cBorder}`, boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
-              borderRadius: '28px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'background 0.2s, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
-            }}
+            onClick={() => { onStartStageSharing?.('youtube'); sfx.playToggle(true); }}
+            style={{ backgroundColor: cCard, border: `1px solid ${cBorder}`, borderRadius: '28px', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'background 0.2s', marginBottom: '8px' }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(234, 67, 53, 0.14), rgba(234, 67, 53, 0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(234,67,53,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span className="icon" style={{ color: '#ea4335', fontSize: '20px' }}>smart_display</span>
               </div>
               <div>
@@ -634,27 +484,15 @@ export default function ActivitiesSidebar({
             <span className="icon" style={{ color: cSubtle, fontSize: '20px' }}>open_in_new</span>
           </div>
 
-          {/* Pill 3d: Slide Deck Presenter */}
+          {/* Pill 3d: Slides */}
           <div
-            onClick={() => {
-              onStartStageSharing?.('slides');
-              sfx.playToggle(true);
-            }}
-            style={{
-              backgroundColor: cCard, border: `1px solid ${cBorder}`, boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
-              borderRadius: '28px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'background 0.2s, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
-            }}
+            onClick={() => { onStartStageSharing?.('slides'); sfx.playToggle(true); }}
+            style={{ backgroundColor: cCard, border: `1px solid ${cBorder}`, borderRadius: '28px', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'background 0.2s', marginBottom: '8px' }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(251, 188, 4, 0.14), rgba(251, 188, 4, 0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(251,188,4,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span className="icon" style={{ color: '#fbbc04', fontSize: '20px' }}>co_present</span>
               </div>
               <div>
@@ -665,370 +503,126 @@ export default function ActivitiesSidebar({
             <span className="icon" style={{ color: cSubtle, fontSize: '20px' }}>open_in_new</span>
           </div>
 
-          {/* Pill 4: Multiplayer Chess */}
-          <div
-            onClick={() => {
-              onStartStageSharing?.('chess');
-              sfx.playToggle(true);
-            }}
-            style={{
-              backgroundColor: cCard, border: `1px solid ${cBorder}`, boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
-              borderRadius: '28px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'background 0.2s, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(253, 214, 99, 0.14), rgba(253, 214, 99, 0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="icon" style={{ color: '#fdd663', fontSize: '20px' }}>sports_esports</span>
-              </div>
-              <div>
-                <div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Multiplayer Chess</div>
-                <div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Play on main stage</div>
-              </div>
+          {/* Pill 4: Chess */}
+          <div onClick={() => { onStartStageSharing?.('chess'); sfx.playToggle(true); }} style={{ backgroundColor: cCard, border: `1px solid ${cBorder}`, borderRadius: '28px', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'background 0.2s', marginBottom: '8px' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(253,214,99,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="icon" style={{ color: '#fdd663', fontSize: '20px' }}>sports_esports</span></div>
+              <div><div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Multiplayer Chess</div><div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Play on main stage</div></div>
             </div>
             <span className="icon" style={{ color: cSubtle, fontSize: '20px' }}>open_in_new</span>
           </div>
 
-          {/* Pill 5: Desmos Graphing Calculator */}
-          <div
-            onClick={() => {
-              onStartStageSharing?.('desmos_graph');
-              sfx.playToggle(true);
-            }}
-            style={{
-              backgroundColor: cCard, border: `1px solid ${cBorder}`, boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
-              borderRadius: '28px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'background 0.2s, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(124, 172, 248, 0.12), rgba(124, 172, 248, 0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="icon" style={{ color: '#7cacf8', fontSize: '20px' }}>show_chart</span>
-              </div>
-              <div>
-                <div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Desmos Graphing</div>
-                <div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Plot equations on main stage</div>
-              </div>
+          {/* Pill 5: Desmos Graphing */}
+          <div onClick={() => { onStartStageSharing?.('desmos_graph'); sfx.playToggle(true); }} style={{ backgroundColor: cCard, border: `1px solid ${cBorder}`, borderRadius: '28px', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'background 0.2s', marginBottom: '8px' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(124,172,248,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="icon" style={{ color: '#7cacf8', fontSize: '20px' }}>show_chart</span></div>
+              <div><div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Desmos Graphing</div><div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Plot equations on main stage</div></div>
             </div>
             <span className="icon" style={{ color: cSubtle, fontSize: '20px' }}>open_in_new</span>
           </div>
 
-          {/* Pill 6: Desmos Scientific Calculator */}
-          {/* Pill 6: Desmos Scientific Calculator (Shares to Stage) */}
-          <div
-            onClick={() => {
-              onStartStageSharing?.('desmos_sci');
-              sfx.playToggle(true);
-            }}
-            style={{
-              backgroundColor: cCard, border: `1px solid ${cBorder}`, boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
-              borderRadius: '28px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'background 0.2s, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(129, 201, 149, 0.14), rgba(129, 201, 149, 0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="icon" style={{ color: '#81c995', fontSize: '20px' }}>functions</span>
-              </div>
-              <div>
-                <div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Desmos Scientific</div>
-                <div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Trig & logs on main stage</div>
-              </div>
+          {/* Pill 6: Desmos Scientific */}
+          <div onClick={() => { onStartStageSharing?.('desmos_sci'); sfx.playToggle(true); }} style={{ backgroundColor: cCard, border: `1px solid ${cBorder}`, borderRadius: '28px', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'background 0.2s', marginBottom: '8px' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(129,201,149,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="icon" style={{ color: '#81c995', fontSize: '20px' }}>functions</span></div>
+              <div><div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Desmos Scientific</div><div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Trig &amp; logs on main stage</div></div>
             </div>
             <span className="icon" style={{ color: cSubtle, fontSize: '20px' }}>open_in_new</span>
           </div>
 
-          {/* Pill 7: Flashcards (Shares to Stage) */}
-          <div
-            onClick={() => {
-              onStartStageSharing?.('flashcards');
-              sfx.playToggle(true);
-            }}
-            style={{
-              backgroundColor: cCard, border: `1px solid ${cBorder}`, boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
-              borderRadius: '28px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'background 0.2s, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(215, 174, 251, 0.14), rgba(215, 174, 251, 0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="icon" style={{ color: '#d7aefb', fontSize: '20px' }}>style</span>
-              </div>
-              <div>
-                <div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Flashcards</div>
-                <div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Interactive deck on main stage</div>
-              </div>
+          {/* Pill 7: Flashcards */}
+          <div onClick={() => { onStartStageSharing?.('flashcards'); sfx.playToggle(true); }} style={{ backgroundColor: cCard, border: `1px solid ${cBorder}`, borderRadius: '28px', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'background 0.2s', marginBottom: '8px' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(215,174,251,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="icon" style={{ color: '#d7aefb', fontSize: '20px' }}>style</span></div>
+              <div><div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Flashcards</div><div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Interactive deck on main stage</div></div>
             </div>
             <span className="icon" style={{ color: cSubtle, fontSize: '20px' }}>open_in_new</span>
           </div>
 
-          {/* Pill 8: Working Basic Calculator */}
-          <div
-            onClick={() => { onSelectActivity('calc_basic'); sfx.playToggle(true); }}
-            style={{
-              backgroundColor: cCard, border: `1px solid ${cBorder}`, boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
-              borderRadius: '28px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'background 0.2s, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(253, 214, 99, 0.12), rgba(253, 214, 99, 0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="icon" style={{ color: '#fdd663', fontSize: '20px' }}>calculate</span>
-              </div>
-              <div>
-                <div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Calculator</div>
-                <div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Basic · personal</div>
-              </div>
+          {/* Pill 8: Calculator */}
+          <div onClick={() => { onSelectActivity('calc_basic'); sfx.playToggle(true); }} style={{ backgroundColor: cCard, border: `1px solid ${cBorder}`, borderRadius: '28px', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'background 0.2s', marginBottom: '8px' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(253,214,99,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="icon" style={{ color: '#fdd663', fontSize: '20px' }}>calculate</span></div>
+              <div><div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Calculator</div><div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Basic · personal</div></div>
             </div>
             <span className="icon" style={{ color: cSubtle, fontSize: '20px' }}>chevron_right</span>
           </div>
 
-          {/* Pill 9: In-call messages */}
-          <div
-            onClick={() => { onSelectActivity('chat'); sfx.playToggle(true); }}
-            style={{
-              backgroundColor: cCard, border: `1px solid ${cBorder}`, boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
-              borderRadius: '28px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'background 0.2s, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(124, 172, 248, 0.12), rgba(124, 172, 248, 0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="icon" style={{ color: '#7cacf8', fontSize: '20px' }}>chat</span>
-              </div>
-              <div>
-                <div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>In-call messages</div>
-                <div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Send messages & files to call</div>
-              </div>
+          {/* Pill 9: Chat */}
+          <div onClick={() => { onSelectActivity('chat'); sfx.playToggle(true); }} style={{ backgroundColor: cCard, border: `1px solid ${cBorder}`, borderRadius: '28px', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'background 0.2s', marginBottom: '8px' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(124,172,248,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="icon" style={{ color: '#7cacf8', fontSize: '20px' }}>chat</span></div>
+              <div><div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>In-call messages</div><div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Send messages &amp; files</div></div>
             </div>
             <span className="icon" style={{ color: cSubtle, fontSize: '20px' }}>chevron_right</span>
           </div>
 
-          {/* Pill 10: Collaborative Notes */}
-          <div
-            onClick={() => { onSelectActivity('notes'); sfx.playToggle(true); }}
-            style={{
-              backgroundColor: cCard, border: `1px solid ${cBorder}`, boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
-              borderRadius: '28px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'background 0.2s, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(129, 201, 149, 0.12), rgba(129, 201, 149, 0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="icon" style={{ color: '#81c995', fontSize: '20px' }}>edit_note</span>
-              </div>
-              <div>
-                <div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Collaborative Notes</div>
-                <div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Shared editing</div>
-              </div>
+          {/* Pill 10: Notes */}
+          <div onClick={() => { onSelectActivity('notes'); sfx.playToggle(true); }} style={{ backgroundColor: cCard, border: `1px solid ${cBorder}`, borderRadius: '28px', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'background 0.2s', marginBottom: '8px' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(129,201,149,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="icon" style={{ color: '#81c995', fontSize: '20px' }}>edit_note</span></div>
+              <div><div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Collaborative Notes</div><div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Shared editing</div></div>
             </div>
             <span className="icon" style={{ color: cSubtle, fontSize: '20px' }}>chevron_right</span>
           </div>
 
           {/* Pill 11: Polls */}
-          <div
-            onClick={() => { onSelectActivity('polls'); sfx.playToggle(true); }}
-            style={{
-              backgroundColor: cCard, border: `1px solid ${cBorder}`, boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
-              borderRadius: '28px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'background-color 0.15s ease'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(215, 174, 251, 0.12), rgba(215, 174, 251, 0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="icon" style={{ color: '#d7aefb', fontSize: '20px' }}>poll</span>
-              </div>
-              <div>
-                <div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Polls</div>
-                <div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Live classroom voting</div>
-              </div>
+          <div onClick={() => { onSelectActivity('polls'); sfx.playToggle(true); }} style={{ backgroundColor: cCard, border: `1px solid ${cBorder}`, borderRadius: '28px', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'background 0.2s', marginBottom: '8px' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(215,174,251,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="icon" style={{ color: '#d7aefb', fontSize: '20px' }}>poll</span></div>
+              <div><div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Polls</div><div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Live classroom voting</div></div>
             </div>
             <span className="icon" style={{ color: cSubtle, fontSize: '20px' }}>chevron_right</span>
           </div>
 
           {/* Pill 11b: Live Quiz */}
-          <div
-            style={{
-              backgroundColor: cCard, border: `1px solid ${cBorder}`, boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
-              borderRadius: '28px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'background-color 0.15s ease'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}
-          >
-            <div
-              onClick={() => { onSelectActivity('quiz'); sfx.playToggle(true); }}
-              style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}
-            >
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(142, 195, 156, 0.16), rgba(142, 195, 156, 0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="icon" style={{ color: '#8ec39c', fontSize: '20px' }}>quiz</span>
-              </div>
-              <div>
-                <div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Live Quiz</div>
-                <div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Interactive STEM competition (Sidebar & Stage)</div>
-              </div>
+          <div style={{ backgroundColor: cCard, border: `1px solid ${cBorder}`, borderRadius: '28px', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'background 0.2s', marginBottom: '8px' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}>
+            <div onClick={() => { onSelectActivity('quiz'); sfx.playToggle(true); }} style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1 }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(142,195,156,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="icon" style={{ color: '#8ec39c', fontSize: '20px' }}>quiz</span></div>
+              <div><div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Live Quiz</div><div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Interactive STEM competition</div></div>
             </div>
-
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onStartStageSharing?.('quiz');
-                  sfx.playToggle(true);
-                }}
-                title="Present Quiz to Stage"
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '12px',
-                  backgroundColor: 'rgba(142, 195, 156, 0.18)',
-                  color: '#8ec39c',
-                  border: '1px solid rgba(142, 195, 156, 0.3)',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <span className="icon" style={{ fontSize: '13px' }}>open_in_new</span>
-                <span>Stage</span>
+              <button onClick={(e) => { e.stopPropagation(); onStartStageSharing?.('quiz'); sfx.playToggle(true); }} style={{ padding: '4px 10px', borderRadius: '12px', backgroundColor: 'rgba(142,195,156,0.18)', color: '#8ec39c', border: '1px solid rgba(142,195,156,0.3)', fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span className="icon" style={{ fontSize: '13px' }}>open_in_new</span><span>Stage</span>
               </button>
-              <span
-                onClick={() => { onSelectActivity('quiz'); sfx.playToggle(true); }}
-                className="icon"
-                style={{ color: '#9aa0a6', fontSize: '20px', cursor: 'pointer' }}
-              >
-                chevron_right
-              </span>
+              <span onClick={() => { onSelectActivity('quiz'); sfx.playToggle(true); }} className="icon" style={{ color: cSubtle, fontSize: '20px', cursor: 'pointer' }}>chevron_right</span>
             </div>
           </div>
 
           {/* Pill 12: Host Controls */}
-          <div
-            onClick={() => { onSelectActivity('host_controls'); sfx.playToggle(true); }}
-            style={{
-              backgroundColor: cCard, border: `1px solid ${cBorder}`, boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)',
-              borderRadius: '28px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'background 0.2s, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(168, 199, 250, 0.14), rgba(168, 199, 250, 0.04))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="icon" style={{ color: '#a8c7fa', fontSize: '20px' }}>security</span>
-              </div>
-              <div>
-                <div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Host controls</div>
-                <div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Meeting moderation & safety</div>
-              </div>
+          <div onClick={() => { onSelectActivity('host_controls'); sfx.playToggle(true); }} style={{ backgroundColor: cCard, border: `1px solid ${cBorder}`, borderRadius: '28px', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'background 0.2s', marginBottom: '8px' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(168,199,250,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="icon" style={{ color: '#a8c7fa', fontSize: '20px' }}>security</span></div>
+              <div><div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Host controls</div><div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Meeting moderation &amp; safety</div></div>
             </div>
             <span className="icon" style={{ color: cSubtle, fontSize: '20px' }}>chevron_right</span>
           </div>
 
-          {/* SETTINGS CARD (Always visible & prominent at bottom) */}
-          <div
-            onClick={() => { onSelectActivity('settings'); sfx.playToggle(true); }}
-            style={{
-              marginTop: '12px',
-              backgroundColor: cCard,
-              borderRadius: '28px',
-              padding: '14px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              border: `1px solid ${cBorder}`,
-              boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.2)'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: isLight ? '#f5f3ef' : 'rgba(255, 255, 255, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="icon" style={{ color: cText, fontSize: '20px' }}>settings</span>
-              </div>
-              <div>
-                <div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Settings</div>
-                <div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Audio, video, & devices</div>
-              </div>
+          {/* Pill 13: Settings */}
+          <div onClick={() => { onSelectActivity('settings'); sfx.playToggle(true); }} style={{ backgroundColor: cCard, border: `1px solid ${cBorder}`, borderRadius: '28px', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'background 0.2s', marginBottom: '8px' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = cCard)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: isLight ? '#f5f3ef' : 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="icon" style={{ color: cText, fontSize: '20px' }}>settings</span></div>
+              <div><div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Settings</div><div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Audio, video &amp; devices</div></div>
             </div>
             <span className="icon" style={{ color: cSubtle, fontSize: '20px' }}>chevron_right</span>
           </div>
         </div>
       ) : (
         /* ACTIVE TOOL SUB-VIEW */
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+          {/* sub-views below */}
+
+
+
+
+
+
+
+
+
           {/* DESMOS SCIENTIFIC */}
           {activeActivity === 'desmos_sci' && (
-            <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, minHeight: 0, padding: '16px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <span style={{ fontSize: '13px', color: cSubtle }}>Powered by Desmos API</span>
                 <button
@@ -1038,7 +632,7 @@ export default function ActivitiesSidebar({
                   Share to Stage
                 </button>
               </div>
-              <div style={{ flex: 1, minHeight: '400px' }}>
+              <div style={{ flex: 1, minHeight: 0 }}>
                 <DesmosCalculator type="scientific" />
               </div>
             </div>
@@ -1308,80 +902,90 @@ export default function ActivitiesSidebar({
             </div>
           )}
 
-          {/* TIMER (SETTINGS IN SIDEBAR • PLAY ON STAGE • AUDIBLE ALARM) */}
+          {/* TIMER */}
           {activeActivity === 'timer' && (
-            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
-              {/* Audible Alarm Alert Banner (if ringing) */}
+            <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Alarm Banner */}
               {isAlarmRinging && (
-                <div
-                  style={{
-                    width: '100%',
-                    padding: '16px',
-                    borderRadius: '16px',
-                    backgroundColor: 'rgba(234, 67, 53, 0.12)',
-                    border: '1px solid rgba(234, 67, 53, 0.4)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '10px',
-                    textAlign: 'center'
-                  }}
-                >
-                  <div style={{ fontSize: '32px' }}>⏰</div>
-                  <div style={{ fontSize: '17px', fontWeight: 700, color: '#ff8a80' }}>
-                    Time's Up! Alarm Ringing
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#c4c7c5' }}>
-                    Audible tone sounding across the room
-                  </div>
+                <div style={{
+                  borderRadius: '16px',
+                  background: 'rgba(234,67,53,0.08)',
+                  border: '1px solid rgba(234,67,53,0.3)',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '10px',
+                  textAlign: 'center'
+                }}>
+                  <span style={{ fontSize: '28px' }}>⏰</span>
+                  <div style={{ fontSize: '15px', fontWeight: 700, color: '#ea4335' }}>Time's Up!</div>
                   <button
-                    onClick={() => {
-                      stopAlarm?.();
-                      sfx.playReaction();
-                    }}
+                    onClick={() => { stopAlarm?.(); sfx.playReaction(); }}
                     style={{
-                      padding: '10px 24px',
-                      borderRadius: '24px',
-                      backgroundColor: '#ff8a80',
-                      color: '#111215',
-                      fontWeight: 700,
-                      fontSize: '13px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      boxShadow: '0 0 16px rgba(255, 138, 128, 0.4)'
+                      padding: '8px 20px', borderRadius: '9999px',
+                      background: '#ea4335', color: '#fff',
+                      fontWeight: 600, fontSize: '13px', border: 'none', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '6px'
                     }}
                   >
-                    <span className="icon" style={{ fontSize: '18px' }}>notifications_off</span>
+                    <span className="icon" style={{ fontSize: '16px' }}>notifications_off</span>
                     <span>Stop Alarm</span>
                   </button>
                 </div>
               )}
 
-              {/* Main Time Countdown Display */}
+              {/* Clock display / custom input */}
               {!isCustomTimerMode ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{
+                  background: isLight
+                    ? 'linear-gradient(145deg, #f0ede8 0%, #e8e3dc 100%)'
+                    : 'linear-gradient(145deg, #111213 0%, #1a1b1d 100%)',
+                  borderRadius: '24px',
+                  padding: '32px 20px 24px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '10px',
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}>
+                  {/* subtle green glow ring behind clock */}
+                  <div style={{
+                    position: 'absolute', top: '50%', left: '50%',
+                    transform: 'translate(-50%, -60%)',
+                    width: '180px', height: '180px', borderRadius: '50%',
+                    background: isAlarmRinging
+                      ? 'radial-gradient(circle, rgba(234,67,53,0.18) 0%, transparent 70%)'
+                      : isTimerRunning
+                        ? 'radial-gradient(circle, rgba(137,183,84,0.14) 0%, transparent 70%)'
+                        : 'radial-gradient(circle, rgba(137,183,84,0.07) 0%, transparent 70%)',
+                    pointerEvents: 'none'
+                  }} />
+                  {/* status badge */}
+                  <div style={{
+                    fontSize: '10px', fontWeight: 700, letterSpacing: '1.2px',
+                    textTransform: 'uppercase',
+                    color: isAlarmRinging ? '#ea4335' : isTimerRunning ? '#89b754' : (isLight ? 'rgba(26,24,20,0.4)' : 'rgba(255,255,255,0.3)'),
+                    background: isAlarmRinging ? 'rgba(234,67,53,0.12)' : isTimerRunning ? 'rgba(137,183,84,0.12)' : (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'),
+                    padding: '3px 10px', borderRadius: '9999px',
+                    border: `1px solid ${isAlarmRinging ? 'rgba(234,67,53,0.3)' : isTimerRunning ? 'rgba(137,183,84,0.3)' : (isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.08)')}`,
+                  }}>
+                    {isAlarmRinging ? '⏰ Time\'s Up' : isTimerRunning ? '● Running' : '○ Paused'}
+                  </div>
+                  {/* big clock */}
                   <div
-                    onClick={() => {
-                      if (!isTimerRunning) setIsCustomTimerMode(true);
-                    }}
+                    onClick={() => { if (!isTimerRunning) setIsCustomTimerMode(true); }}
+                    title={!isTimerRunning ? 'Click to edit' : ''}
                     style={{
-                      fontSize: '52px',
-                      fontWeight: 600,
-                      color: isAlarmRinging ? '#ff8a80' : isTimerRunning ? (isLight ? '#f48120' : '#a8cded') : cText,
+                      fontSize: '64px', fontWeight: 700,
                       fontFamily: 'Roboto Mono, monospace',
-                      letterSpacing: '2px',
-                      margin: '8px 0',
+                      letterSpacing: '4px',
+                      color: isAlarmRinging ? '#ea4335' : isTimerRunning ? '#89b754' : (isLight ? '#1a1814' : '#ffffff'),
                       cursor: !isTimerRunning ? 'pointer' : 'default',
-                      padding: '4px 16px',
-                      borderRadius: '12px',
-                      backgroundColor: !isTimerRunning ? (isLight ? '#f5f3ef' : 'rgba(255, 255, 255, 0.04)') : 'transparent',
-                      border: !isTimerRunning ? `1px dashed ${cBorder}` : '1px solid transparent',
-                      transition: 'color 0.2s ease'
+                      lineHeight: 1,
+                      position: 'relative'
                     }}
-                    title={!isTimerRunning ? 'Click to edit duration' : ''}
                   >
                     {formatTimer(timerSeconds)}
                   </div>
@@ -1389,124 +993,83 @@ export default function ActivitiesSidebar({
                     <button
                       onClick={() => setIsCustomTimerMode(true)}
                       style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: cSubtle,
-                        fontSize: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        cursor: 'pointer',
-                        marginTop: '2px'
+                        background: 'none', border: 'none',
+                        color: isLight ? 'rgba(26,24,20,0.35)' : 'rgba(255,255,255,0.35)', fontSize: '11px',
+                        display: 'flex', alignItems: 'center', gap: '4px',
+                        cursor: 'pointer'
                       }}
                     >
-                      <span className="icon" style={{ fontSize: '14px' }}>edit</span>
-                      <span>Edit duration</span>
+                      <span className="icon" style={{ fontSize: '13px' }}>edit</span>
+                      <span>tap to edit</span>
                     </button>
                   )}
                 </div>
               ) : (
-                /* Custom Time Input Form */
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '16px',
-                    backgroundColor: isLight ? '#fbfbfb' : '#1e1f22',
-                    borderRadius: '16px',
-                    border: `1px solid ${cBorder}`,
-                    width: '100%',
-                    maxWidth: '300px'
-                  }}
-                >
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: cText }}>
-                    Set Custom Duration
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{
+                  background: isLight ? '#f5f3ef' : 'rgba(137,183,84,0.07)',
+                  border: `1px solid ${isLight ? '#e8e4de' : 'rgba(137,183,84,0.2)'}`,
+                  borderRadius: '20px',
+                  padding: '20px 16px',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px'
+                }}>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: cText }}>Set Duration</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                       <input
-                        type="number"
-                        min="0"
-                        max="99"
-                        value={inputMinutes}
+                        type="number" min="0" max="99" value={inputMinutes}
                         onChange={(e) => setInputMinutes(e.target.value)}
                         style={{
-                          width: '64px',
-                          height: '44px',
-                          textAlign: 'center',
-                          fontSize: '22px',
-                          fontWeight: 600,
-                          backgroundColor: isLight ? '#ffffff' : '#121316',
-                          color: cText,
-                          border: `1px solid ${cBorder}`,
-                          borderRadius: '8px',
-                          outline: 'none'
+                          width: '68px', height: '48px', textAlign: 'center',
+                          fontSize: '24px', fontWeight: 700,
+                          background: isLight ? '#fff' : '#121316',
+                          color: '#89b754',
+                          border: '2px solid #89b754',
+                          borderRadius: '10px', outline: 'none'
                         }}
                       />
-                      <span style={{ fontSize: '11px', color: cSubtle, marginTop: '4px' }}>Minutes</span>
+                      <span style={{ fontSize: '11px', color: cSubtle }}>min</span>
                     </div>
-
-                    <span style={{ fontSize: '24px', fontWeight: 600, color: cSubtle }}>:</span>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <span style={{ fontSize: '28px', fontWeight: 700, color: '#89b754', marginBottom: '16px' }}>:</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                       <input
-                        type="number"
-                        min="0"
-                        max="59"
-                        value={inputSeconds}
+                        type="number" min="0" max="59" value={inputSeconds}
                         onChange={(e) => setInputSeconds(e.target.value)}
                         style={{
-                          width: '64px',
-                          height: '44px',
-                          textAlign: 'center',
-                          fontSize: '22px',
-                          fontWeight: 600,
-                          backgroundColor: isLight ? '#ffffff' : '#121316',
-                          color: cText,
-                          border: `1px solid ${cBorder}`,
-                          borderRadius: '8px',
-                          outline: 'none'
+                          width: '68px', height: '48px', textAlign: 'center',
+                          fontSize: '24px', fontWeight: 700,
+                          background: isLight ? '#fff' : '#121316',
+                          color: '#89b754',
+                          border: '2px solid #89b754',
+                          borderRadius: '10px', outline: 'none'
                         }}
                       />
-                      <span style={{ fontSize: '11px', color: cSubtle, marginTop: '4px' }}>Seconds</span>
+                      <span style={{ fontSize: '11px', color: cSubtle }}>sec</span>
                     </div>
                   </div>
-
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                  <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                       onClick={() => {
                         const m = parseInt(inputMinutes, 10) || 0;
                         const s = parseInt(inputSeconds, 10) || 0;
-                        const total = Math.max(1, m * 60 + s);
-                        resetTimer?.(total);
+                        resetTimer?.(Math.max(1, m * 60 + s));
                         setIsCustomTimerMode(false);
                         sfx.playReaction();
                       }}
                       style={{
-                        padding: '6px 16px',
-                        borderRadius: '16px',
-                        backgroundColor: isLight ? '#f48120' : '#a8cded',
-                        color: isLight ? '#ffffff' : '#0e1720',
-                        fontWeight: 600,
-                        fontSize: '12px',
-                        border: 'none',
-                        cursor: 'pointer'
+                        padding: '7px 18px', borderRadius: '9999px',
+                        background: '#89b754', color: '#fff',
+                        fontWeight: 600, fontSize: '13px', border: 'none', cursor: 'pointer'
                       }}
                     >
-                      Set Timer
+                      Set
                     </button>
                     <button
                       onClick={() => setIsCustomTimerMode(false)}
                       style={{
-                        padding: '6px 14px',
-                        borderRadius: '16px',
-                        backgroundColor: isLight ? '#f5f3ef' : 'rgba(255, 255, 255, 0.08)',
-                        color: cText,
-                        fontSize: '12px',
-                        border: isLight ? `1px solid ${cBorder}` : 'none',
-                        cursor: 'pointer'
+                        padding: '7px 14px', borderRadius: '9999px',
+                        background: isLight ? '#f5f3ef' : 'rgba(255,255,255,0.08)',
+                        color: cSubtle, fontSize: '13px',
+                        border: `1px solid ${cBorder}`, cursor: 'pointer'
                       }}
                     >
                       Cancel
@@ -1515,155 +1078,86 @@ export default function ActivitiesSidebar({
                 </div>
               )}
 
-              {/* Incremental Adjustment Buttons (+1m, +5m, -1m) */}
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={() => {
-                    adjustTimer?.(-60);
-                    sfx.playReaction();
-                  }}
-                  disabled={timerSeconds < 60 || isTimerRunning}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '8px',
-                    backgroundColor: isLight ? '#f5f3ef' : 'rgba(255, 255, 255, 0.06)',
-                    color: timerSeconds < 60 || isTimerRunning ? (isLight ? '#c7c4be' : '#555') : cText,
-                    fontSize: '11px',
-                    fontWeight: 500,
-                    border: `1px solid ${cBorder}`,
-                    cursor: timerSeconds < 60 || isTimerRunning ? 'default' : 'pointer'
-                  }}
-                >
-                  -1 min
-                </button>
-                <button
-                  onClick={() => {
-                    adjustTimer?.(60);
-                    sfx.playReaction();
-                  }}
-                  disabled={isTimerRunning}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '8px',
-                    backgroundColor: isLight ? '#f5f3ef' : 'rgba(255, 255, 255, 0.06)',
-                    color: isTimerRunning ? (isLight ? '#c7c4be' : '#555') : cText,
-                    fontSize: '11px',
-                    fontWeight: 500,
-                    border: `1px solid ${cBorder}`,
-                    cursor: isTimerRunning ? 'default' : 'pointer'
-                  }}
-                >
-                  +1 min
-                </button>
-                <button
-                  onClick={() => {
-                    adjustTimer?.(300);
-                    sfx.playReaction();
-                  }}
-                  disabled={isTimerRunning}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '8px',
-                    backgroundColor: isLight ? '#f5f3ef' : 'rgba(255, 255, 255, 0.06)',
-                    color: isTimerRunning ? (isLight ? '#c7c4be' : '#555') : cText,
-                    fontSize: '11px',
-                    fontWeight: 500,
-                    border: `1px solid ${cBorder}`,
-                    cursor: isTimerRunning ? 'default' : 'pointer'
-                  }}
-                >
-                  +5 min
-                </button>
+              {/* Adjust buttons */}
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                {[{ label: '-1m', delta: -60, disabled: timerSeconds < 60 || isTimerRunning }, { label: '+1m', delta: 60, disabled: isTimerRunning }, { label: '+5m', delta: 300, disabled: isTimerRunning }].map(({ label, delta, disabled }) => (
+                  <button
+                    key={label}
+                    onClick={() => { adjustTimer?.(delta); sfx.playReaction(); }}
+                    disabled={disabled}
+                    style={{
+                      padding: '7px 16px', borderRadius: '9999px',
+                      background: disabled
+                        ? (isLight ? '#f0ede8' : 'rgba(255,255,255,0.03)')
+                        : (isLight ? '#f5f3ef' : 'rgba(255,255,255,0.07)'),
+                      color: disabled ? (isLight ? '#c7c4be' : 'rgba(255,255,255,0.2)') : (isLight ? '#1a1814' : 'rgba(255,255,255,0.75)'),
+                      border: `1px solid ${disabled ? cBorder : (isLight ? '#d8d4ce' : 'rgba(255,255,255,0.12)')}`,
+                      fontSize: '12px', fontWeight: 600,
+                      cursor: disabled ? 'default' : 'pointer',
+                      letterSpacing: '0.3px'
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
 
-              {/* Action Buttons (Play on Stage / Pause / Reset) */}
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
                 {isTimerRunning ? (
                   <>
                     <button
-                      onClick={() => {
-                        pauseTimer?.();
-                        sfx.playReaction();
-                      }}
+                      onClick={() => { pauseTimer?.(); sfx.playReaction(); }}
                       style={{
-                        padding: '10px 22px',
-                        borderRadius: '9999px',
-                        background: isLight ? '#f5f3ef' : '#3c4043',
-                        color: cText,
-                        fontWeight: 600,
-                        fontSize: '13px',
-                        border: `1px solid ${cBorder}`,
+                        padding: '11px 24px', borderRadius: '9999px',
+                        background: isLight ? '#f5f3ef' : 'rgba(255,255,255,0.08)',
+                        color: isLight ? '#1a1814' : 'rgba(255,255,255,0.8)',
+                        fontWeight: 600, fontSize: '13px',
+                        border: `1px solid ${isLight ? '#d8d4ce' : 'rgba(255,255,255,0.12)'}`,
                         cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
+                        display: 'flex', alignItems: 'center', gap: '6px'
                       }}
                     >
                       <span className="icon" style={{ fontSize: '16px' }}>pause</span>
-                      <span>Pause</span>
+                      Pause
                     </button>
                     <button
-                      onClick={() => {
-                        startTimer?.(true);
-                        sfx.playReaction();
-                      }}
+                      onClick={() => { startTimer?.(true); sfx.playReaction(); }}
                       style={{
-                        padding: '10px 22px',
-                        borderRadius: '9999px',
-                        background: isLight ? '#fef3e2' : '#a8cded',
-                        color: isLight ? '#f48120' : '#0e1720',
-                        fontWeight: 600,
-                        fontSize: '13px',
-                        border: isLight ? '1px solid #fbd38d' : 'none',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        boxShadow: isLight ? '0 2px 8px rgba(244, 129, 32, 0.15)' : '0 2px 10px rgba(168, 205, 237, 0.3)'
+                        padding: '11px 24px', borderRadius: '9999px',
+                        background: '#89b754', color: '#fff',
+                        fontWeight: 700, fontSize: '13px',
+                        border: 'none', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: '6px'
                       }}
                     >
                       <span className="icon" style={{ fontSize: '16px' }}>open_in_new</span>
-                      <span>Open on Stage</span>
+                      Stage
                     </button>
                   </>
                 ) : (
                   <button
-                    onClick={() => {
-                      startTimer?.(true);
-                      sfx.playReaction();
-                    }}
+                    onClick={() => { startTimer?.(true); sfx.playReaction(); }}
                     style={{
-                      padding: '10px 28px',
-                      borderRadius: '9999px',
-                      background: isLight ? '#f48120' : '#a8cded',
-                      color: isLight ? '#ffffff' : '#0e1720',
-                      fontWeight: 700,
-                      fontSize: '14px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      boxShadow: isLight ? '0 2px 12px rgba(244, 129, 32, 0.35)' : '0 2px 12px rgba(168, 205, 237, 0.35)'
+                      padding: '13px 36px', borderRadius: '9999px',
+                      background: '#89b754', color: '#fff',
+                      fontWeight: 700, fontSize: '14px', border: 'none', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      boxShadow: 'none'
                     }}
                   >
-                    <span className="icon" style={{ fontSize: '18px' }}>play_arrow</span>
-                    <span>Play on Stage</span>
+                    <span className="icon" style={{ fontSize: '20px' }}>play_arrow</span>
+                    Play on Stage
                   </button>
                 )}
-
                 <button
-                  onClick={() => {
-                    resetTimer?.(initialTimerSeconds);
-                    sfx.playToggle(false);
-                  }}
+                  onClick={() => { resetTimer?.(initialTimerSeconds); sfx.playToggle(false); }}
                   style={{
-                    padding: '10px 20px',
-                    borderRadius: '9999px',
-                    background: isLight ? '#f5f3ef' : 'rgba(255, 255, 255, 0.08)',
-                    color: cText,
+                    padding: '11px 20px', borderRadius: '9999px',
+                    background: 'transparent',
+                    color: isLight ? '#6b6560' : 'rgba(255,255,255,0.4)',
                     fontSize: '13px',
-                    border: `1px solid ${cBorder}`,
+                    border: `1px solid ${isLight ? '#d8d4ce' : 'rgba(255,255,255,0.1)'}`,
                     cursor: 'pointer'
                   }}
                 >
@@ -1671,16 +1165,13 @@ export default function ActivitiesSidebar({
                 </button>
               </div>
 
-              {/* Informational Subtitle */}
-              <div style={{ fontSize: '12px', color: cSubtle, textAlign: 'center', maxWidth: '280px', lineHeight: 1.4 }}>
-                Settings are configured here in the sidebar. Playback & countdown ring live on the main presentation stage.
-              </div>
-
-              {/* Quick Preset Buttons */}
-              <div style={{ width: '100%', borderTop: `1px solid ${cBorder}`, paddingTop: '16px', marginTop: '4px' }}>
-                <div style={{ fontSize: '11px', fontWeight: 600, color: cSubtle, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px', textAlign: 'center' }}>
-                  Quick Presets
-                </div>
+              {/* Quick Presets */}
+              <div style={{ borderTop: `1px solid ${isLight ? '#e8e4de' : 'rgba(255,255,255,0.06)'}`, paddingTop: '16px' }}>
+                <div style={{
+                  fontSize: '10px', fontWeight: 700, color: isLight ? '#a8a39d' : 'rgba(255,255,255,0.25)',
+                  textTransform: 'uppercase', letterSpacing: '1px',
+                  marginBottom: '10px', textAlign: 'center'
+                }}>Presets</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center' }}>
                   {[
                     { label: '1 min', sec: 60 },
@@ -1688,38 +1179,26 @@ export default function ActivitiesSidebar({
                     { label: '5 min', sec: 300 },
                     { label: '10 min', sec: 600 },
                     { label: '15 min', sec: 900 },
-                    { label: '25 min (Pomodoro)', sec: 1500 },
+                    { label: '25 min', sec: 1500 },
                     { label: '45 min', sec: 2700 }
-                  ].map((preset) => (
-                    <button
-                      key={preset.label}
-                      onClick={() => {
-                        resetTimer?.(preset.sec);
-                        setInputMinutes(Math.floor(preset.sec / 60).toString());
-                        setInputSeconds((preset.sec % 60).toString().padStart(2, '0'));
-                        sfx.playReaction();
-                      }}
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: '16px',
-                        backgroundColor: timerSeconds === preset.sec
-                          ? (isLight ? '#fef3e2' : 'rgba(168, 205, 237, 0.18)')
-                          : (isLight ? '#f5f3ef' : 'rgba(255, 255, 255, 0.04)'),
-                        border: timerSeconds === preset.sec
-                          ? `1px solid ${isLight ? '#f48120' : '#a8cded'}`
-                          : `1px solid ${cBorder}`,
-                        color: timerSeconds === preset.sec
-                          ? (isLight ? '#f48120' : '#a8cded')
-                          : cSubtle,
-                        fontSize: '11px',
-                        fontWeight: 500,
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
+                  ].map((p) => {
+                    const active = timerSeconds === p.sec;
+                    return (
+                      <button
+                        key={p.label}
+                        onClick={() => { resetTimer?.(p.sec); setInputMinutes(Math.floor(p.sec / 60).toString()); setInputSeconds((p.sec % 60).toString().padStart(2, '0')); sfx.playReaction(); }}
+                        style={{
+                          padding: '6px 13px', borderRadius: '9999px', fontSize: '12px', fontWeight: active ? 700 : 500,
+                          background: active ? '#89b754' : (isLight ? '#f5f3ef' : 'rgba(255,255,255,0.05)'),
+                          color: active ? '#fff' : (isLight ? '#6b6560' : 'rgba(255,255,255,0.45)'),
+                          border: `1px solid ${active ? '#89b754' : (isLight ? '#e0dbd4' : 'rgba(255,255,255,0.08)')}`,
+                          cursor: 'pointer', transition: 'all 0.15s'
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -1749,7 +1228,7 @@ export default function ActivitiesSidebar({
                   Copy Notes
                 </button>
               </div>
-              <textarea value={sharedNotes} onChange={(e) => setSharedNotes(e.target.value)} style={{ flex: 1, minHeight: '380px', backgroundColor: isLight ? '#f5f3ef' : '#131314', border: `1px solid ${cBorder}`, borderRadius: '12px', padding: '14px', color: cText, fontSize: '13px', lineHeight: 1.6, fontFamily: 'monospace', resize: 'none', outline: 'none' }} />
+              <textarea value={sharedNotes} onChange={(e) => setSharedNotes(e.target.value)} style={{ flex: 1, minHeight: '120px', backgroundColor: isLight ? '#f5f3ef' : '#131314', border: `1px solid ${cBorder}`, borderRadius: '12px', padding: '14px', color: cText, fontSize: '13px', lineHeight: 1.6, fontFamily: 'monospace', resize: 'none', outline: 'none' }} />
             </div>
           )}
 
@@ -2837,6 +2316,168 @@ export default function ActivitiesSidebar({
                   </label>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* REPORT A PROBLEM */}
+          {activeActivity === 'report' && (
+            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto' }}>
+              {reportSubmitted ? (
+                /* SUCCESS STATE */
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px 16px', textAlign: 'center' }}>
+                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(137,183,84,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span className="icon" style={{ color: '#89b754', fontSize: '28px' }}>check_circle</span>
+                  </div>
+                  <div style={{ fontSize: '17px', fontWeight: 600, color: cText }}>Thanks for your feedback</div>
+                  <div style={{ fontSize: '13px', color: cSubtle, lineHeight: 1.5 }}>Your report helps us improve connectt.live for everyone.</div>
+                  <button
+                    onClick={() => { setReportSubmitted(false); setReportWhat(''); setReportDesc(''); setReportOptIn(false); setReportScreenshot(null); setReportType(null); }}
+                    style={{ padding: '9px 22px', borderRadius: '9999px', background: isLight ? '#f5f3ef' : 'rgba(255,255,255,0.08)', color: cText, border: `1px solid ${cBorder}`, fontSize: '13px', cursor: 'pointer' }}
+                  >
+                    Submit another
+                  </button>
+                </div>
+              ) : reportType === null ? (
+                /* LANDING — illustration + two options */
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
+                  <img
+                    src="/reportissue.png"
+                    alt="Report"
+                    style={{ width: '100%', maxWidth: '220px', objectFit: 'contain', marginTop: '8px' }}
+                  />
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '17px', fontWeight: 600, color: cText, marginBottom: '6px' }}>How can we help?</div>
+                    <div style={{ fontSize: '13px', color: cSubtle, lineHeight: 1.5 }}>Let us know what's on your mind and we'll look into it.</div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
+                    <button
+                      onClick={() => setReportType('issue')}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '14px',
+                        padding: '14px 18px', borderRadius: '16px', cursor: 'pointer',
+                        background: isLight ? '#ffffff' : '#28292a',
+                        border: `1px solid ${cBorder}`,
+                        textAlign: 'left', transition: 'background 0.15s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = isLight ? '#f5f3ef' : '#303134'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = isLight ? '#ffffff' : '#28292a'}
+                    >
+                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(234,67,53,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span className="icon" style={{ color: '#ea4335', fontSize: '20px' }}>bug_report</span>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: cText }}>Report an issue</div>
+                        <div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Something's broken or not working</div>
+                      </div>
+                      <span className="icon" style={{ color: cSubtle, fontSize: '20px', marginLeft: 'auto' }}>chevron_right</span>
+                    </button>
+
+                    <button
+                      onClick={() => setReportType('suggest')}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '14px',
+                        padding: '14px 18px', borderRadius: '16px', cursor: 'pointer',
+                        background: isLight ? '#ffffff' : '#28292a',
+                        border: `1px solid ${cBorder}`,
+                        textAlign: 'left', transition: 'background 0.15s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = isLight ? '#f5f3ef' : '#303134'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = isLight ? '#ffffff' : '#28292a'}
+                    >
+                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(137,183,84,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span className="icon" style={{ color: '#89b754', fontSize: '20px' }}>lightbulb</span>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: cText }}>Suggest something</div>
+                        <div style={{ fontSize: '12px', color: cSubtle, marginTop: '2px' }}>Share an idea or feature request</div>
+                      </div>
+                      <span className="icon" style={{ color: cSubtle, fontSize: '20px', marginLeft: 'auto' }}>chevron_right</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* FORM — report issue or suggest */
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: reportType === 'issue' ? 'rgba(234,67,53,0.12)' : 'rgba(137,183,84,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span className="icon" style={{ color: reportType === 'issue' ? '#ea4335' : '#89b754', fontSize: '20px' }}>{reportType === 'issue' ? 'bug_report' : 'lightbulb'}</span>
+                    </div>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: cText }}>{reportType === 'issue' ? 'Report an issue' : 'Suggest something'}</div>
+                  </div>
+
+                  {/* What were you trying to do */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 500, color: cText }}>
+                      {reportType === 'issue' ? 'When you noticed this issue, what were you trying to do?' : 'What would you like to see improved?'}
+                      <span style={{ color: '#ea4335', marginLeft: '3px' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={reportType === 'issue' ? 'e.g. Turn on my camera, share my screen...' : 'e.g. Better noise cancellation, dark mode...'}
+                      value={reportWhat}
+                      onChange={(e) => setReportWhat(e.target.value)}
+                      style={{ padding: '10px 14px', borderRadius: '10px', background: isLight ? '#f5f3ef' : '#131314', border: `1px solid ${reportWhat ? '#89b754' : cBorder}`, color: cText, fontSize: '13px', outline: 'none', transition: 'border-color 0.15s' }}
+                    />
+                  </div>
+
+                  {/* Describe */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 500, color: cText }}>
+                      {reportType === 'issue' ? 'Describe your issue' : 'Describe your suggestion'}
+                      <span style={{ color: '#ea4335', marginLeft: '3px' }}>*</span>
+                    </label>
+                    <textarea
+                      placeholder={reportType === 'issue' ? "Tell us what happened and what's not working" : 'Tell us more about your idea...'}
+                      value={reportDesc}
+                      onChange={(e) => setReportDesc(e.target.value)}
+                      rows={4}
+                      style={{ padding: '10px 14px', borderRadius: '10px', background: isLight ? '#f5f3ef' : '#131314', border: `1px solid ${reportDesc ? '#89b754' : cBorder}`, color: cText, fontSize: '13px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5, transition: 'border-color 0.15s' }}
+                    />
+                    <span style={{ fontSize: '11px', color: cSubtle }}>Please don't include any sensitive information</span>
+                  </div>
+
+                  {/* Screenshot upload */}
+                  <input type="file" accept="image/*" ref={reportFileRef} style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) setReportScreenshot(URL.createObjectURL(file)); e.target.value = ''; }} />
+                  <div
+                    onClick={() => reportFileRef.current?.click()}
+                    style={{ border: `1.5px dashed ${reportScreenshot ? '#89b754' : cBorder}`, borderRadius: '12px', padding: reportScreenshot ? '8px' : '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer', background: isLight ? '#fafafa' : 'rgba(255,255,255,0.02)', transition: 'background 0.15s', position: 'relative' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = isLight ? '#f5f3ef' : 'rgba(255,255,255,0.05)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = isLight ? '#fafafa' : 'rgba(255,255,255,0.02)'}
+                  >
+                    {reportScreenshot ? (
+                      <>
+                        <img src={reportScreenshot} alt="Screenshot" style={{ width: '100%', borderRadius: '8px', maxHeight: '160px', objectFit: 'cover' }} />
+                        <button onClick={(e) => { e.stopPropagation(); setReportScreenshot(null); }} style={{ position: 'absolute', top: '12px', right: '12px', width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                          <span className="icon" style={{ fontSize: '14px' }}>close</span>
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="icon" style={{ fontSize: '28px', color: cSubtle }}>add_photo_alternate</span>
+                        <span style={{ fontSize: '13px', fontWeight: 500, color: cText }}>Click to add a screenshot</span>
+                        <span style={{ fontSize: '11px', color: cSubtle, textAlign: 'center' }}>You can also mark your area of concern or hide info using Edit tool</span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Opt-in */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }} onClick={() => setReportOptIn(!reportOptIn)}>
+                    <div style={{ width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, marginTop: '1px', background: reportOptIn ? '#89b754' : 'transparent', border: `2px solid ${reportOptIn ? '#89b754' : cBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+                      {reportOptIn && <span className="icon" style={{ fontSize: '13px', color: '#fff' }}>check</span>}
+                    </div>
+                    <span style={{ fontSize: '12px', color: cSubtle, lineHeight: 1.5 }}>Opt in for updates and information requests. Some account and system information may be sent to help fix problems and improve services.</span>
+                  </div>
+
+                  {/* Submit */}
+                  <button
+                    onClick={() => { if (!reportWhat.trim() || !reportDesc.trim() || !reportOptIn) return; setReportSubmitted(true); }}
+                    disabled={!reportWhat.trim() || !reportDesc.trim() || !reportOptIn}
+                    style={{ padding: '11px', borderRadius: '9999px', background: reportWhat.trim() && reportDesc.trim() && reportOptIn ? '#89b754' : (isLight ? '#e8e4de' : 'rgba(255,255,255,0.08)'), color: reportWhat.trim() && reportDesc.trim() && reportOptIn ? '#fff' : cSubtle, border: 'none', fontSize: '14px', fontWeight: 600, cursor: reportWhat.trim() && reportDesc.trim() && reportOptIn ? 'pointer' : 'default', transition: 'all 0.15s' }}
+                  >
+                    Submit
+                  </button>
+                </>
+              )}
             </div>
           )}
 
