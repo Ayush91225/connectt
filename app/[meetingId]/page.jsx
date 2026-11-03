@@ -9,14 +9,20 @@ import PipPlaceholder from '../../components/PipWindow';
 import AudioQuickMenu from '../../components/AudioQuickMenu';
 import ScreenShareStage from '../../components/ScreenShareStage';
 import ActivitiesSidebar from '../../components/ActivitiesSidebar';
+import OrbAvatar from '../../components/OrbAvatar';
+import RemoteParticipantTile from '../../components/RemoteParticipantTile';
+import MeetingLobby from '../../components/MeetingLobby';
+import { IvsStageClient } from '../../lib/ivsStageClient';
 
 export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = null }) {
   const params = useParams();
   const router = useRouter();
   const meetingId = overrideMeetingId || params?.meetingId || (demoMode ? 'demo-class' : 'sen-mvwh-cyc');
 
-  // Dynamic user name
+  // Dynamic user name & Google Meet Green Room Lobby State
   const [userName, setUserName] = useState('You');
+  const [hasJoinedRoom, setHasJoinedRoom] = useState(demoMode);
+
   useEffect(() => {
     try {
       const saved = localStorage.getItem('connectt_username');
@@ -48,6 +54,96 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
       localStorage.setItem('connectt_room_theme', nextTheme);
     } catch (e) {}
   };
+
+  // AWS IVS Real-Time Streaming Infrastructure (Region: ap-south-1)
+  const [ivsStatus, setIvsStatus] = useState('connecting');
+  const [ivsDetails, setIvsDetails] = useState({ stageArn: '', profile: 'default', isLiveAws: false });
+  const [remoteParticipants, setRemoteParticipants] = useState({});
+  const ivsClientRef = useRef(null);
+
+  useEffect(() => {
+    if (!hasJoinedRoom) return;
+
+    const client = new IvsStageClient({
+      meetingId,
+      userName,
+      onConnectionStateChange: (state, meta) => {
+        setIvsStatus(state);
+        if (meta) setIvsDetails(prev => ({ ...prev, ...meta }));
+      },
+      onParticipantJoined: (p) => {
+        if (!p.userName || p.userName === userName) return;
+        setRemoteParticipants(prev => ({
+          ...prev,
+          [p.userName]: {
+            ...(prev[p.userName] || {}),
+            ...p,
+            id: p.userName
+          }
+        }));
+        sfx.playJoin();
+        showToast(`${p.userName} joined the meeting`);
+      },
+      onParticipantLeft: (participantName) => {
+        setRemoteParticipants(prev => {
+          const updated = { ...prev };
+          const leavingUser = updated[participantName]?.userName || participantName;
+          delete updated[participantName];
+          showToast(`${leavingUser} left the meeting`);
+          return updated;
+        });
+        sfx.playLeave();
+      },
+      onStreamAdded: (participantName, data) => {
+        if (!participantName || participantName === userName) return;
+        setRemoteParticipants(prev => ({
+          ...prev,
+          [participantName]: {
+            ...(prev[participantName] || {}),
+            ...data,
+            id: participantName
+          }
+        }));
+      },
+      onStreamRemoved: (participantName) => {
+        setRemoteParticipants(prev => {
+          if (!prev[participantName]) return prev;
+          return {
+            ...prev,
+            [participantName]: {
+              ...prev[participantName],
+              videoTrack: null
+            }
+          };
+        });
+      },
+      onParticipantStateUpdate: (participantName, stateUpdate) => {
+        if (!participantName || participantName === userName) return;
+        setRemoteParticipants(prev => {
+          if (!prev[participantName]) return prev;
+          return {
+            ...prev,
+            [participantName]: {
+              ...prev[participantName],
+              ...stateUpdate
+            }
+          };
+        });
+      },
+      onError: (err) => {
+        console.warn('[AWS IVS Stage Info]:', err.message);
+      }
+    });
+
+    client.initialize().catch(() => {});
+    ivsClientRef.current = client;
+
+    return () => {
+      if (ivsClientRef.current) {
+        ivsClientRef.current.leave();
+      }
+    };
+  }, [meetingId, userName, hasJoinedRoom]);
 
   // Auto Fullscreen on Entering Meeting Room
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -369,7 +465,11 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
         videoRef.current.srcObject = null;
       }
     }
-  }, [cameraStream, isCameraOn, presentationMode]);
+    // Sync media with AWS IVS Stage
+    if (ivsClientRef.current && cameraStream) {
+      ivsClientRef.current.updateLocalMedia(cameraStream, isCameraOn, isMicOn, isSpeaking);
+    }
+  }, [cameraStream, isCameraOn, isMicOn, isSpeaking, presentationMode]);
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -529,6 +629,24 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
     router.push('/home');
   };
 
+  // Google Meet Green Room Lobby Check
+  if (!hasJoinedRoom) {
+    return (
+      <MeetingLobby
+        meetingId={meetingId}
+        initialName={userName !== 'You' ? userName : ''}
+        theme={theme}
+        onJoin={({ userName: enteredName, isCameraOn: lobbyCam, isMicOn: lobbyMic, presentDirectly }) => {
+          setUserName(enteredName);
+          setIsCameraOn(lobbyCam);
+          setIsMicOn(lobbyMic);
+          if (presentDirectly) setPresentationMode('screen');
+          setHasJoinedRoom(true);
+        }}
+      />
+    );
+  }
+
   return (
     <div
       className={`call-container ${theme === 'light' ? 'light-theme' : ''}`}
@@ -589,6 +707,36 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* AWS IVS Real-Time Infrastructure Badge */}
+          <div
+            className="call-ivs-pill connectt-hide-mobile"
+            data-tooltip={`AWS IVS Real-Time WebRTC Stage\nProfile: ${ivsDetails.profile || 'default'} | Region: ap-south-1\nStage: ${ivsDetails.stageArn || 'connectt-' + meetingId}\nStatus: ${ivsStatus === 'connected' ? (ivsDetails.isLiveAws ? 'Active AWS Live' : 'Active') : ivsStatus}`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 10px',
+              borderRadius: '20px',
+              backgroundColor: theme === 'light' ? '#f0fdf4' : 'rgba(16, 185, 129, 0.12)',
+              border: '1px solid rgba(16, 185, 129, 0.35)',
+              color: theme === 'light' ? '#15803d' : '#34d399',
+              fontSize: '11px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            <span
+              style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                backgroundColor: ivsStatus === 'connected' ? '#22c55e' : '#eab308',
+                boxShadow: ivsStatus === 'connected' ? '0 0 6px #22c55e' : 'none'
+              }}
+            />
+            <span>AWS IVS Live</span>
+          </div>
+
           {/* Always-on Recording Badge */}
           <div className="call-recording-pill" data-tooltip="Meeting is being recorded (Always on)">
             <span className="rec-pulse-dot"></span>
@@ -596,8 +744,8 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
           </div>
 
           <div className="call-device-counter connectt-hide-mobile" data-tooltip="Participants">
-            <span className="icon" style={{ fontSize: '16px' }}>laptop</span>
-            <span>{presentationMode ? 2 : 1}</span>
+            <span className="icon" style={{ fontSize: '16px' }}>people</span>
+            <span>{1 + Object.keys(remoteParticipants).length}</span>
           </div>
 
           {/* Theme Toggle Button (Light / Dark Mode) */}
@@ -637,11 +785,7 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
               transition: 'all 0.2s ease'
             }}
           >
-            <img
-              src={getDiceBearAvatar(userName)}
-              alt={userName}
-              style={{ width: '22px', height: '22px', borderRadius: '50%', objectFit: 'cover' }}
-            />
+            <OrbAvatar userName={userName} size={22} />
             <span className="connectt-hide-mobile" style={{ fontSize: '12px', fontWeight: 500, color: theme === 'light' ? '#1a1814' : '#ffffff' }}>
               {userName}
             </span>
@@ -682,7 +826,20 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
           />
           </div>
         ) : (
-          <div className="call-video-grid-flex">
+          <div
+            className="call-video-grid-flex"
+            style={{
+              display: Object.keys(remoteParticipants).length > 0 ? 'grid' : 'flex',
+              gridTemplateColumns: Object.keys(remoteParticipants).length === 1
+                ? 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))'
+                : 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
+              gap: '14px',
+              width: '100%',
+              height: '100%',
+              padding: Object.keys(remoteParticipants).length > 0 ? '12px' : 0,
+              boxSizing: 'border-box'
+            }}
+          >
             {/* Main Video Tile with Avatar Accent */}
             <div
               className="call-main-tile"
@@ -724,22 +881,25 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
                 />
               </div>
 
-              {/* Camera Off Avatar */}
+              {/* Camera Off Avatar with Living Orb */}
               {!isCameraOn && (
-                <div className="call-camera-off-avatar" style={{ overflow: 'hidden', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <img
-                    src={getDiceBearAvatar(userName)}
-                    alt={userName}
-                    style={{
-                      width: '120px',
-                      height: '120px',
-                      borderRadius: '50%',
-                      objectFit: 'cover',
-                      border: theme === 'light' ? `3px solid #e8e4de` : `2px solid ${avatarAccent.primary}99`,
-                      boxShadow: theme === 'light' ? `0 4px 24px rgba(0,0,0,0.06)` : `0 0 24px ${avatarAccent.glowSoft}`,
-                      backgroundColor: theme === 'light' ? '#f5f3ef' : '#161719',
-                      transition: 'border 0.3s ease, box-shadow 0.3s ease'
-                    }}
+                <div
+                  className="call-camera-off-avatar"
+                  style={{
+                    overflow: 'visible',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'transparent'
+                  }}
+                >
+                  <OrbAvatar
+                    userName={userName}
+                    size={170}
+                    isSpeaking={isSpeaking && isMicOn}
+                    isMicOn={isMicOn}
+                    themeVariant="cloud"
                   />
                 </div>
               )}
@@ -783,6 +943,16 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
                 <span>{userName}</span>
               </div>
             </div>
+
+            {/* Remote Connected Participant Tiles */}
+            {Object.values(remoteParticipants).map((p) => (
+              <RemoteParticipantTile
+                key={p.id}
+                participant={p}
+                theme={theme}
+                tileCount={1 + Object.keys(remoteParticipants).length}
+              />
+            ))}
           </div>
         )}
 
@@ -1042,6 +1212,22 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
 
         {/* RIGHT PILL — hidden on mobile (those actions move into MoreOptionsMenu) */}
         <div className="call-right-action-pill call-hide-mobile">
+          <button
+            className="call-right-pill-btn"
+            data-tooltip={`People (${1 + Object.keys(remoteParticipants).length})`}
+            onClick={() => {
+              const names = [userName, ...Object.values(remoteParticipants).map(p => p.userName)].join(', ');
+              showToast(`${1 + Object.keys(remoteParticipants).length} person(s) in call: ${names}`);
+            }}
+          >
+            <span className="icon">people</span>
+            {Object.keys(remoteParticipants).length > 0 && (
+              <span style={{ fontSize: '11px', fontWeight: 700, marginLeft: '2px' }}>
+                {1 + Object.keys(remoteParticipants).length}
+              </span>
+            )}
+          </button>
+
           <button
             className={`call-right-pill-btn ${isActivitiesOpen && activeActivity === 'chat' ? 'active' : ''}`}
             data-tooltip="Chat with everyone"
@@ -1380,7 +1566,6 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
       {pipActive && (
         <PipPlaceholder
           userName={userName}
-          getDiceBearAvatar={getDiceBearAvatar}
           onReturnToTab={() => { pipWinRef.current?.focus(); }}
           theme={theme}
         />

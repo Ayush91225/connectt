@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { sfx } from '../../lib/audio';
-import { getDiceBearAvatar } from '../../lib/avatar';
+import OrbAvatar from '../../components/OrbAvatar';
 import GuruAIPanel from '../components/GuruAIPanel';
 
 export default function HomePage() {
@@ -395,11 +395,7 @@ export default function HomePage() {
             }}
             style={{ border: `1px solid ${border}`, background: bg }}
           >
-            <img
-              src={getDiceBearAvatar(userName)}
-              alt={userName}
-              className="hm-avatar"
-            />
+            <OrbAvatar userName={userName} size={28} />
             <span className="hm-profile-name">{userName}</span>
           </button>
 

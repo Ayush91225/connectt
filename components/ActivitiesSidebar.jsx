@@ -5,7 +5,7 @@ import { sfx } from '../lib/audio';
 import DesmosCalculator from './DesmosCalculator';
 import ChessGame from './ChessGame';
 import FlashcardsDeck from './FlashcardsDeck';
-import { getDiceBearAvatar } from '../lib/avatar';
+import OrbAvatar from './OrbAvatar';
 import MathRenderer from './MathRenderer';
 
 export default function ActivitiesSidebar({
@@ -764,11 +764,7 @@ export default function ActivitiesSidebar({
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <img
-                          src={getDiceBearAvatar(m.sender)}
-                          alt={m.sender}
-                          style={{ width: '18px', height: '18px', borderRadius: '50%', objectFit: 'cover' }}
-                        />
+                        <OrbAvatar userName={m.sender} size={20} />
                         <span style={{ fontSize: '12px', fontWeight: 600, color: isMe ? '#89b754' : '#7cacf8' }}>{m.sender}</span>
                         <span style={{ fontSize: '10px', color: '#8e918f' }}>{m.time}</span>
                       </div>

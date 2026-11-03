@@ -1,13 +1,18 @@
 'use client';
 
-export default function PipPlaceholder({ userName, getDiceBearAvatar, onReturnToTab, theme }) {
+import React from 'react';
+import OrbAvatar from './OrbAvatar';
+
+export default function PipPlaceholder({ userName, onReturnToTab, theme }) {
   const isLight = theme === 'light';
   return (
     <div
       className="pip-placeholder"
       style={{ background: isLight ? '#f5f3ef' : '#0e0f10' }}
     >
-      <img src={getDiceBearAvatar(userName)} alt={userName} className="pip-ph-avatar" />
+      <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+        <OrbAvatar userName={userName} size={72} />
+      </div>
       <p className="pip-ph-title" style={{ color: isLight ? '#1a1814' : '#e3e3e3' }}>
         Your call is in another window
       </p>

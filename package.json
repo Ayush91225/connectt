@@ -8,9 +8,14 @@
     "start": "next start -p 3000"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1161.0",
+    "@aws-sdk/client-ivs-realtime": "^3.1161.0",
+    "@aws-sdk/lib-dynamodb": "^3.1161.0",
     "@excalidraw/excalidraw": "^0.18.1",
+    "amazon-ivs-web-broadcast": "^1.41.0",
     "chess.js": "^1.4.0",
     "next": "16.3.5",
+    "orb-ui": "^0.10.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

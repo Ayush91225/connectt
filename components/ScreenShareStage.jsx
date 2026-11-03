@@ -10,7 +10,7 @@ import SlideDeckPresenter from './SlideDeckPresenter';
 import YouTubeSharingStage from './YouTubeSharingStage';
 import QuizStage from './QuizStage';
 import TimerStage from './TimerStage';
-import { getDiceBearAvatar } from '../lib/avatar';
+import OrbAvatar from './OrbAvatar';
 
 export default function ScreenShareStage({
   mode = 'screen', // 'screen', 'whiteboard', 'youtube', 'slides', 'chess', 'desmos_graph', 'desmos_sci', 'flashcards', 'code', 'quiz', 'timer'
@@ -297,16 +297,11 @@ export default function ScreenShareStage({
 
           {!isCameraOn && (
             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#202124' }}>
-              <img
-                src={getDiceBearAvatar(userName)}
-                alt={userName}
-                style={{
-                  width: '46px',
-                  height: '46px',
-                  borderRadius: '50%',
-                  border: '2px solid rgba(137, 183, 84, 0.6)',
-                  objectFit: 'cover'
-                }}
+              <OrbAvatar
+                userName={userName}
+                size={54}
+                isSpeaking={isMicOn}
+                isMicOn={isMicOn}
               />
             </div>
           )}
