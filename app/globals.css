@@ -1830,13 +1830,6 @@ button:focus-visible {
   }
 }
 
-/* Guru AI Panel full screen on mobile */
-@media (max-width: 520px) {
-  aside[aria-label='Guru AI Copilot'] {
-    max-width: 100% !important;
-    width: 100% !important;
-  }
-}
 
 /* ========================================================
    STAGE AREA RESPONSIVE

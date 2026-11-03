@@ -50,10 +50,7 @@ export default function ActivitiesSidebar({
   const [settingsTab, setSettingsTab] = useState('audio'); // 'audio', 'video', 'host'
 
   // Chat State
-  const [chatMessages, setChatMessages] = useState([
-    { id: 1, sender: 'System', time: '12:00 PM', text: 'Welcome to connectt.live! Enterprise-grade meetings powered by Navchetna Technologies × HomeGuru.', isSystem: true },
-    { id: 2, sender: 'Sarah Chen', time: '12:02 PM', text: 'Hey! The new Desmos graphing engine and Chess board are fantastic!' }
-  ]);
+  const [chatMessages, setChatMessages] = useState([]);
   const [newMsg, setNewMsg] = useState('');
   const [allowChat, setAllowChat] = useState(true);
   const fileInputRef = useRef(null);
@@ -106,41 +103,15 @@ export default function ActivitiesSidebar({
   const [inputMinutes, setInputMinutes] = useState('5');
   const [inputSeconds, setInputSeconds] = useState('00');
 
-  // EdTech Polls State
-  const [polls, setPolls] = useState([
-    {
-      id: 1,
-      question: 'Which algorithms topic should we deep-dive into next?',
-      category: 'Computer Science',
-      options: [
-        { text: 'AVL & Red-Black Balanced Trees', votes: 18 },
-        { text: 'Dijkstra & Graph Shortest Paths', votes: 14 },
-        { text: 'Dynamic Programming Memoization', votes: 22 },
-        { text: 'Trie & Prefix Tree Matching', votes: 7 }
-      ],
-      userVoted: null,
-      status: 'active'
-    },
-    {
-      id: 2,
-      question: 'What is the amortized complexity of inserting into an ArrayList?',
-      category: 'Data Structures',
-      options: [
-        { text: 'O(1) Amortized Constant Time', votes: 31 },
-        { text: 'O(n) Linear Time', votes: 5 },
-        { text: 'O(log n) Logarithmic Time', votes: 2 }
-      ],
-      userVoted: null,
-      status: 'active'
-    }
-  ]);
+  // EdTech Polls State (Clean dynamic list)
+  const [polls, setPolls] = useState([]);
   const [isCreatingPoll, setIsCreatingPoll] = useState(false);
   const [newPollQ, setNewPollQ] = useState('');
   const [newPollOptions, setNewPollOptions] = useState(['', '', '']);
 
   // Notes State
   const [sharedNotes, setSharedNotes] = useState(
-    '# Meeting Notes - connectt.live\n\nNavchetna Technologies × HomeGuru\n\n- Real WebRTC display media capture verified\n- Desmos scientific & graphing calculation active\n- Live Excalidraw collaborative board\n\nAction Items:\n- [x] Cloud recording always on\n- [x] Working Chess integration\n- [ ] Export session recap'
+    '# Collaborative Meeting Notes\n\n- Meeting started on connectt.live\n- Real-time video & screen sharing active\n\n### Action Items:\n- [ ] '
   );
 
   // Working Basic Calculator State
@@ -220,7 +191,7 @@ export default function ActivitiesSidebar({
   const flashcards = [
     { q: 'What is WebRTC?', a: 'Direct browser-to-browser peer communication for real-time video, audio, and data.' },
     { q: 'What is Desmos?', a: 'The premier mathematical calculation and graphing engine used worldwide in STEM education.' },
-    { q: 'What is connectt.live?', a: 'An ultra-high-fidelity, enterprise-grade video collaboration platform co-built by Navchetna Technologies × HomeGuru.' }
+    { q: 'What is connectt.live?', a: 'An ultra-low-latency, enterprise video conferencing and collaboration platform.' }
   ];
 
 
