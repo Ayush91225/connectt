@@ -55,11 +55,13 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
     } catch (e) {}
   };
 
-  // AWS IVS Real-Time Streaming Infrastructure (Region: ap-south-1)
+  // AWS IVS Real-Time Streaming Infrastructure & Go Orchestrator (Region: ap-south-1)
   const [ivsStatus, setIvsStatus] = useState('connecting');
   const [ivsDetails, setIvsDetails] = useState({ stageArn: '', profile: 'default', isLiveAws: false });
   const [remoteParticipants, setRemoteParticipants] = useState({});
+  const [remotePresentation, setRemotePresentation] = useState(null);
   const ivsClientRef = useRef(null);
+  const knownParticipantsRef = useRef(new Set());
 
   useEffect(() => {
     if (!hasJoinedRoom) return;
@@ -73,6 +75,12 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
       },
       onParticipantJoined: (p) => {
         if (!p.userName || p.userName === userName) return;
+        const isNew = !knownParticipantsRef.current.has(p.userName);
+        if (isNew) {
+          knownParticipantsRef.current.add(p.userName);
+          sfx.playJoin();
+          showToast(`${p.userName} joined the meeting`);
+        }
         setRemoteParticipants(prev => ({
           ...prev,
           [p.userName]: {
@@ -81,18 +89,36 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
             id: p.userName
           }
         }));
-        sfx.playJoin();
-        showToast(`${p.userName} joined the meeting`);
       },
       onParticipantLeft: (participantName) => {
+        if (!participantName || participantName === userName) return;
+        if (knownParticipantsRef.current.has(participantName)) {
+          knownParticipantsRef.current.delete(participantName);
+          showToast(`${participantName} left the meeting`);
+          sfx.playLeave();
+        }
         setRemoteParticipants(prev => {
           const updated = { ...prev };
-          const leavingUser = updated[participantName]?.userName || participantName;
           delete updated[participantName];
-          showToast(`${leavingUser} left the meeting`);
           return updated;
         });
-        sfx.playLeave();
+        setRemotePresentation(prev => {
+          if (prev && prev.presenter === participantName) {
+            showToast(`${participantName} stopped presenting`);
+            return null;
+          }
+          return prev;
+        });
+      },
+      onPresentationChange: (data) => {
+        if (!data || data.presenter === userName) return;
+        if (data.active && data.mode) {
+          setRemotePresentation(data);
+          showToast(`${data.presenter} is presenting ${data.mode}`);
+        } else {
+          setRemotePresentation(null);
+          showToast(`${data.presenter || 'Presenter'} stopped presenting`);
+        }
       },
       onStreamAdded: (participantName, data) => {
         if (!participantName || participantName === userName) return;
@@ -538,16 +564,19 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
         const display = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
         setScreenStream(display);
         setPresentationMode('screen');
+        ivsClientRef.current?.broadcastPresentation('screen', { presenter: userName, active: true });
+
         display.getVideoTracks()[0].onended = () => {
           setPresentationMode(null);
           setScreenStream(null);
+          ivsClientRef.current?.broadcastPresentation(null, { presenter: userName, active: false });
           if (cameraStream && isCameraOn) {
             cameraStream.getVideoTracks().forEach(t => (t.enabled = true));
             if (videoRef.current) videoRef.current.srcObject = cameraStream;
           }
           showToast('You stopped presenting');
         };
-        showToast('You are presenting to everyone');
+        showToast('You are presenting your screen to everyone');
       } catch (err) {
         showToast('Screen share cancelled');
       }
@@ -557,6 +586,7 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
         setScreenStream(null);
       }
       setPresentationMode(null);
+      ivsClientRef.current?.broadcastPresentation(null, { presenter: userName, active: false });
       if (cameraStream && isCameraOn) {
         cameraStream.getVideoTracks().forEach(t => (t.enabled = true));
         if (videoRef.current) videoRef.current.srcObject = cameraStream;
@@ -570,6 +600,7 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
   const handleStartStageSharing = (mode) => {
     setPresentationMode(mode);
     setIsActivitiesOpen(false);
+    ivsClientRef.current?.broadcastPresentation(mode, { presenter: userName, active: true });
     showToast(`Presenting ${mode} on main screen`);
   };
 
@@ -580,6 +611,7 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
       setScreenStream(null);
     }
     setPresentationMode(null);
+    ivsClientRef.current?.broadcastPresentation(null, { presenter: userName, active: false });
     if (cameraStream && isCameraOn) {
       cameraStream.getVideoTracks().forEach(t => (t.enabled = true));
       if (videoRef.current) videoRef.current.srcObject = cameraStream;
@@ -806,24 +838,42 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
         }}
       >
 
-        {presentationMode ? (
+        {(presentationMode || remotePresentation) ? (
           /* Multi-Mode Presentation Stage (Screen Share, Excalidraw, YouTube, Slides, Chess, Desmos, Quiz, Timer) */
           <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <ScreenShareStage
-            theme={theme}
-            mode={presentationMode}
-            userName={userName}
-            isCameraOn={isCameraOn}
-            isMicOn={isMicOn}
-            cameraStream={cameraStream}
-            screenStream={screenStream}
-            onStopPresenting={handleStopPresenting}
-            timerState={timerState}
-            onOpenSidebarSettings={() => {
-              setIsActivitiesOpen(true);
-              setActiveActivity('timer');
-            }}
-          />
+            {remotePresentation && !presentationMode && (
+              <div style={{
+                background: theme === 'light' ? '#e8f0fe' : '#1e293b',
+                color: theme === 'light' ? '#1967d2' : '#93c5fd',
+                padding: '6px 16px',
+                fontSize: '13px',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                borderBottom: '1px solid rgba(0,0,0,0.08)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>present_to_all</span>
+                  <span><strong>{remotePresentation.presenter}</strong> is presenting {remotePresentation.mode} to everyone</span>
+                </div>
+              </div>
+            )}
+            <ScreenShareStage
+              theme={theme}
+              mode={presentationMode || remotePresentation?.mode || 'screen'}
+              userName={presentationMode ? userName : (remotePresentation?.presenter || 'Presenter')}
+              isCameraOn={isCameraOn}
+              isMicOn={isMicOn}
+              cameraStream={cameraStream}
+              screenStream={presentationMode ? screenStream : null}
+              onStopPresenting={presentationMode ? handleStopPresenting : () => setRemotePresentation(null)}
+              timerState={timerState}
+              onOpenSidebarSettings={() => {
+                setIsActivitiesOpen(true);
+                setActiveActivity('timer');
+              }}
+            />
           </div>
         ) : (
           <div
