@@ -19,6 +19,7 @@ export default function RemoteParticipantTile({
     isCameraOn = false,
     isMicOn = true,
     isSpeaking = false,
+    isHandRaised = false,
     videoTrack = null,
     audioTrack = null
   } = participant;
@@ -107,6 +108,31 @@ export default function RemoteParticipantTile({
             isMicOn={isMicOn}
             themeVariant="cloud"
           />
+        </div>
+      )}
+
+      {/* Top Left Hand Raised Indicator */}
+      {isHandRaised && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '12px',
+            left: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '4px 10px',
+            borderRadius: '20px',
+            backgroundColor: '#0b57d0',
+            color: '#ffffff',
+            fontSize: '11px',
+            fontWeight: 600,
+            boxShadow: '0 2px 8px rgba(11, 87, 208, 0.4)',
+            zIndex: 10
+          }}
+        >
+          <span>✋</span>
+          <span>Hand raised</span>
         </div>
       )}
 

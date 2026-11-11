@@ -2375,42 +2375,59 @@ body {
 
   .call-top-header { padding: 6px 10px; height: 48px; }
 
-  /* Self-view: small portrait card, bottom-right, exactly like reference */
-  .call-main-tile {
-    position: absolute;
-    bottom: 96px;
-    right: 16px;
-    width: clamp(80px, 26vw, 108px);
-    height: clamp(120px, 38vw, 160px);
-    max-height: none;
-    border-radius: 20px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
-    border: 2px solid rgba(255,255,255,0.1) !important;
-    z-index: 10;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #404451;
+  /* Responsive mobile self-view and multi-party grid */
+  .call-video-grid-flex.solo-peer .call-main-tile {
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    border-radius: 18px !important;
+    display: flex !important;
+  }
+  .call-video-grid-flex.solo-peer .call-tile-name-tag {
+    display: flex !important;
+  }
+  .call-video-grid-flex.solo-peer .call-camera-off-avatar {
+    width: 120px !important;
+    height: 120px !important;
   }
 
-  /* Avatar inside small self-view  " tiny like reference (~56 units) */
-  .call-camera-off-avatar {
-    width: 36px !important;
-    height: 36px !important;
+  .call-video-grid-flex.has-remote-peers {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    padding: 8px !important;
+    height: 100% !important;
   }
-  .call-camera-off-avatar img {
-    width: 36px !important;
-    height: 36px !important;
-    border-width: 1px !important;
+  .call-video-grid-flex.has-remote-peers .call-main-tile {
+    flex: 1 !important;
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    border-radius: 16px !important;
+    display: flex !important;
+  }
+  .call-video-grid-flex.has-remote-peers .remote-participant-tile {
+    flex: 1 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    border-radius: 16px !important;
+    display: flex !important;
+  }
+  .call-video-grid-flex.has-remote-peers .call-tile-name-tag {
+    display: flex !important;
   }
 
-  /* Name tag hidden */
-  .call-tile-name-tag { display: none !important; }
-
-  /* Mic badge tiny */
-  .call-tile-mic-status { top: 5px; right: 5px; width: 18px; height: 18px; }
-  .call-tile-mic-status .icon { font-size: 11px; }
+  /* Mic badge */
+  .call-tile-mic-status { top: 8px; right: 8px; width: 22px; height: 22px; }
+  .call-tile-mic-status .icon { font-size: 13px; }
 
   /* Dock row: single centered row */
   .call-dock-row {

@@ -10,7 +10,7 @@ const PIECE_SYMBOLS = {
   b: { p: '♟', r: '♜', n: '♞', b: '♝', q: '♛', k: '♚' }
 };
 
-export default function ChessGame({ onShareToStage, theme = 'light' }) {
+export default function ChessGame({ onShareToStage, theme = 'light', onSync = null, syncData = null }) {
   const isLight = theme === 'light';
   const cText = isLight ? '#1a1814' : '#ffffff';
   const cSubtle = isLight ? '#6b6560' : '#9aa0a6';
@@ -23,6 +23,17 @@ export default function ChessGame({ onShareToStage, theme = 'light' }) {
   const [history, setHistory] = useState([]);
   const [gameStatus, setGameStatus] = useState('Game in progress');
   const [capturedPieces, setCapturedPieces] = useState({ w: [], b: [] });
+
+  // Sync with remote chess moves
+  useEffect(() => {
+    if (syncData?.fen && syncData.fen !== game.fen()) {
+      try {
+        const remoteGame = new Chess(syncData.fen);
+        setGame(remoteGame);
+        sfx.playToggle(true);
+      } catch (e) {}
+    }
+  }, [syncData]);
 
   const board = useMemo(() => game.board(), [game]);
   const turn = game.turn(); // 'w' or 'b'
@@ -100,6 +111,7 @@ export default function ChessGame({ onShareToStage, theme = 'light' }) {
             // Create new instance for state trigger
             const newGame = new Chess(game.fen());
             setGame(newGame);
+            onSync?.({ fen: newGame.fen() });
           }
         } catch (err) {
           console.warn('Illegal move attempted:', err);

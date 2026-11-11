@@ -22,7 +22,10 @@ export default function ScreenShareStage({
   onStopPresenting,
   timerState = null,
   onOpenSidebarSettings = null,
-  theme = 'light'
+  theme = 'light',
+  onToolSync = null,
+  toolSyncData = null,
+  isPresenter = false
 }) {
   const [isAudioSharing, setIsAudioSharing] = useState(true);
   const pipVideoRef = useRef(null);
@@ -196,10 +199,15 @@ export default function ScreenShareStage({
           )
         )}
 
-        {/* MODE: FULL STAGE EXCALIDRAW (PACKAGE-POWERED, NO IFRAME) */}
+        {/* MODE: FULL STAGE EXCALIDRAW (PACKAGE-POWERED, REAL-TIME STREAMING) */}
         {mode === 'whiteboard' && (
           <div style={{ width: '100%', height: '100%', position: 'relative', backgroundColor: theme === 'light' ? '#ffffff' : '#121212' }}>
-            <ExcalidrawWrapper theme={theme} />
+            <ExcalidrawWrapper
+              theme={theme}
+              onSync={(payload) => onToolSync?.('whiteboard', 'DRAW', payload)}
+              syncData={toolSyncData?.whiteboard}
+              isPresenter={isPresenter}
+            />
           </div>
         )}
 
@@ -220,7 +228,11 @@ export default function ScreenShareStage({
         {/* MODE: FULL STAGE CHESS */}
         {mode === 'chess' && (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: theme === 'light' ? '#fbfbfb' : '#18191b' }}>
-            <ChessGame theme={theme} />
+            <ChessGame
+              theme={theme}
+              onSync={(payload) => onToolSync?.('chess', 'MOVE', payload)}
+              syncData={toolSyncData?.chess}
+            />
           </div>
         )}
 
@@ -234,7 +246,11 @@ export default function ScreenShareStage({
         {/* MODE: FULL STAGE SYNCED YOUTUBE */}
         {mode === 'youtube' && (
           <div style={{ width: '100%', height: '100%', backgroundColor: theme === 'light' ? '#fbfbfb' : '#000' }}>
-            <YouTubeSharingStage theme={theme} />
+            <YouTubeSharingStage
+              theme={theme}
+              onSync={(payload) => onToolSync?.('youtube', 'PLAY', payload)}
+              syncData={toolSyncData?.youtube}
+            />
           </div>
         )}
 

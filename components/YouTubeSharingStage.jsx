@@ -16,7 +16,7 @@ const YTIcon = ({ size = 18 }) => (
   </svg>
 );
 
-export default function YouTubeSharingStage({ theme = 'light' }) {
+export default function YouTubeSharingStage({ theme = 'light', onSync = null, syncData = null }) {
   const isLight = theme === 'light';
 
   const cBg     = isLight ? '#f7f5f2' : '#0e0f10';
@@ -29,6 +29,12 @@ export default function YouTubeSharingStage({ theme = 'light' }) {
   const [currentVideo, setCurrentVideo] = useState(null);
   const [inputUrl, setInputUrl]         = useState('');
   const [error, setError]               = useState('');
+
+  React.useEffect(() => {
+    if (syncData?.videoId) {
+      setCurrentVideo({ id: syncData.videoId, title: syncData.title || 'Synchronized YouTube Stream' });
+    }
+  }, [syncData]);
 
   const extractVideoId = (input) => {
     if (!input) return null;
@@ -56,6 +62,7 @@ export default function YouTubeSharingStage({ theme = 'light' }) {
     const id = extractVideoId(inputUrl);
     if (id) {
       setCurrentVideo({ id, title: 'Synchronized YouTube Stream' });
+      onSync?.({ videoId: id, title: 'Synchronized YouTube Stream' });
       setInputUrl('');
       sfx.playReaction();
     } else {
@@ -179,7 +186,11 @@ export default function YouTubeSharingStage({ theme = 'light' }) {
           {QUICK_LECTURES.map((item) => (
             <button
               key={item.id}
-              onClick={() => { setCurrentVideo({ id: item.id, title: item.title }); sfx.playReaction(); }}
+              onClick={() => {
+                setCurrentVideo({ id: item.id, title: item.title });
+                onSync?.({ videoId: item.id, title: item.title });
+                sfx.playReaction();
+              }}
               style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '9999px', background: cCard, border: `1px solid ${cBorder}`, cursor: 'pointer', transition: 'background 0.15s', fontSize: '13px', color: cSubtle, fontWeight: 500, whiteSpace: 'nowrap' }}
               onMouseEnter={(e) => { e.currentTarget.style.background = cCardH; e.currentTarget.style.color = cText; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = cCard; e.currentTarget.style.color = cSubtle; }}

@@ -216,6 +216,7 @@ export default function MeetingLobby({
 
       {/* Main Lobby Split Area */}
       <div
+        className="cnt-lobby-main-split"
         style={{
           flex: 1,
           display: 'flex',
@@ -231,9 +232,11 @@ export default function MeetingLobby({
       >
         {/* Left: Camera Preview Tile */}
         <div
+          className="cnt-lobby-camera-tile"
           style={{
             flex: '1.2',
             maxWidth: '680px',
+            width: '100%',
             aspectRatio: '16 / 9',
             position: 'relative',
             borderRadius: '24px',
@@ -350,9 +353,11 @@ export default function MeetingLobby({
 
         {/* Right: "Ready to join?" Card */}
         <div
+          className="cnt-lobby-join-card"
           style={{
             flex: '0.9',
             maxWidth: '380px',
+            width: '100%',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center'
@@ -472,6 +477,27 @@ export default function MeetingLobby({
           </div>
         </div>
       </div>
+
+      <style jsx global>{`
+        @media (max-width: 860px) {
+          .cnt-lobby-main-split {
+            flex-direction: column !important;
+            gap: 20px !important;
+            padding: 16px !important;
+            height: auto !important;
+          }
+          .cnt-lobby-camera-tile {
+            max-width: 100% !important;
+            width: 100% !important;
+            aspect-ratio: 16 / 9 !important;
+            max-height: 40vh !important;
+          }
+          .cnt-lobby-join-card {
+            max-width: 100% !important;
+            width: 100% !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

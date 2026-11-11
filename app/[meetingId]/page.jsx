@@ -60,6 +60,7 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
   const [ivsDetails, setIvsDetails] = useState({ stageArn: '', profile: 'default', isLiveAws: false });
   const [remoteParticipants, setRemoteParticipants] = useState({});
   const [remotePresentation, setRemotePresentation] = useState(null);
+  const [toolSyncData, setToolSyncData] = useState({});
   const ivsClientRef = useRef(null);
   const knownParticipantsRef = useRef(new Set());
 
@@ -120,6 +121,31 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
           showToast(`${data.presenter || 'Presenter'} stopped presenting`);
         }
       },
+      onToolEvent: (data) => {
+        if (!data || data.userName === userName) return;
+        if (data.toolType && data.payload) {
+          setToolSyncData(prev => ({
+            ...prev,
+            [data.toolType]: data.payload
+          }));
+        }
+      },
+      onChatMessage: (data) => {
+        if (!data || data.sender === userName) return;
+        if (data.subType === 'REACTION' && data.emoji) {
+          sfx.playReaction();
+          const remoteR = {
+            id: Date.now() + Math.random(),
+            emoji: data.emoji,
+            driftX: (Math.random() - 0.5) * 120,
+            sender: data.sender || 'Participant'
+          };
+          setFloatingEmojis(prev => [...prev, remoteR]);
+          setTimeout(() => {
+            setFloatingEmojis(prev => prev.filter(r => r.id !== remoteR.id));
+          }, 2800);
+        }
+      },
       onStreamAdded: (participantName, data) => {
         if (!participantName || participantName === userName) return;
         setRemoteParticipants(prev => ({
@@ -145,6 +171,12 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
       },
       onParticipantStateUpdate: (participantName, stateUpdate) => {
         if (!participantName || participantName === userName) return;
+        if (stateUpdate.isHandRaised !== undefined) {
+          if (stateUpdate.isHandRaised) {
+            sfx.playHandRaise();
+            showToast(`${participantName} raised hand ✋`);
+          }
+        }
         setRemoteParticipants(prev => {
           if (!prev[participantName]) return prev;
           return {
@@ -619,28 +651,52 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
     showToast('You stopped presenting');
   };
 
-  // Send Reaction
+  // Broadcast collaborative tool interactions (Whiteboard, Chess, YouTube, etc.)
+  const handleToolSync = (toolType, action, payload) => {
+    ivsClientRef.current?.broadcastToolSync(toolType, action, payload);
+  };
+
+  // Send Reaction - broadcasted to all meeting participants
   const handleSendReaction = (emoji) => {
     sfx.playReaction();
     const newR = {
       id: Date.now() + Math.random(),
       emoji,
-      driftX: (Math.random() - 0.5) * 90,
+      driftX: (Math.random() - 0.5) * 120,
       sender: userName
     };
     setFloatingEmojis(prev => [...prev, newR]);
     setShowReactions(false);
+
+    // Send via WebSocket and BroadcastChannel
+    ivsClientRef.current?.sendWsMessage({
+      type: 'CHAT',
+      subType: 'REACTION',
+      emoji,
+      sender: userName
+    });
+    ivsClientRef.current?.channel?.postMessage({
+      type: 'CHAT',
+      subType: 'REACTION',
+      emoji,
+      sender: userName
+    });
+
     setTimeout(() => {
       setFloatingEmojis(prev => prev.filter(r => r.id !== newR.id));
-    }, 2500);
+    }, 2800);
   };
 
-  // Hand raise
+  // Hand raise - broadcasted to room
   const handleToggleHand = () => {
     const next = !isHandRaised;
     setIsHandRaised(next);
     sfx.playHandRaise();
     showToast(next ? 'You raised your hand' : 'You lowered your hand');
+
+    ivsClientRef.current?.broadcastState('PARTICIPANT_UPDATE', {
+      isHandRaised: next
+    });
   };
 
   // Captions
@@ -739,36 +795,6 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {/* AWS IVS Real-Time Infrastructure Badge */}
-          <div
-            className="call-ivs-pill connectt-hide-mobile"
-            data-tooltip={`AWS IVS Real-Time WebRTC Stage\nProfile: ${ivsDetails.profile || 'default'} | Region: ap-south-1\nStage: ${ivsDetails.stageArn || 'connectt-' + meetingId}\nStatus: ${ivsStatus === 'connected' ? (ivsDetails.isLiveAws ? 'Active AWS Live' : 'Active') : ivsStatus}`}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 10px',
-              borderRadius: '20px',
-              backgroundColor: theme === 'light' ? '#f0fdf4' : 'rgba(16, 185, 129, 0.12)',
-              border: '1px solid rgba(16, 185, 129, 0.35)',
-              color: theme === 'light' ? '#15803d' : '#34d399',
-              fontSize: '11px',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-          >
-            <span
-              style={{
-                width: '7px',
-                height: '7px',
-                borderRadius: '50%',
-                backgroundColor: ivsStatus === 'connected' ? '#22c55e' : '#eab308',
-                boxShadow: ivsStatus === 'connected' ? '0 0 6px #22c55e' : 'none'
-              }}
-            />
-            <span>AWS IVS Live</span>
-          </div>
-
           {/* Always-on Recording Badge */}
           <div className="call-recording-pill" data-tooltip="Meeting is being recorded (Always on)">
             <span className="rec-pulse-dot"></span>
@@ -873,11 +899,14 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
                 setIsActivitiesOpen(true);
                 setActiveActivity('timer');
               }}
+              onToolSync={handleToolSync}
+              toolSyncData={toolSyncData}
+              isPresenter={Boolean(presentationMode)}
             />
           </div>
         ) : (
           <div
-            className="call-video-grid-flex"
+            className={`call-video-grid-flex ${Object.keys(remoteParticipants).length > 0 ? 'has-remote-peers' : 'solo-peer'}`}
             style={{
               display: Object.keys(remoteParticipants).length > 0 ? 'grid' : 'flex',
               gridTemplateColumns: Object.keys(remoteParticipants).length === 1
