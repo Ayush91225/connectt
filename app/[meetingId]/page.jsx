@@ -591,16 +591,18 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
 
   // Real Screen Share toggle
   const handleToggleScreenShare = async () => {
-    if (presentationMode !== 'screen') {
+    if (presentationMode !== 'screen' || !screenStream) {
       try {
         const display = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
         setScreenStream(display);
         setPresentationMode('screen');
+        ivsClientRef.current?.publishScreenShare?.(display);
         ivsClientRef.current?.broadcastPresentation('screen', { presenter: userName, active: true });
 
         display.getVideoTracks()[0].onended = () => {
           setPresentationMode(null);
           setScreenStream(null);
+          ivsClientRef.current?.publishScreenShare?.(null);
           ivsClientRef.current?.broadcastPresentation(null, { presenter: userName, active: false });
           if (cameraStream && isCameraOn) {
             cameraStream.getVideoTracks().forEach(t => (t.enabled = true));
@@ -611,6 +613,9 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
         showToast('You are presenting your screen to everyone');
       } catch (err) {
         showToast('Screen share cancelled');
+        if (!screenStream && presentationMode === 'screen') {
+          setPresentationMode(null);
+        }
       }
     } else {
       if (screenStream) {
@@ -618,6 +623,7 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
         setScreenStream(null);
       }
       setPresentationMode(null);
+      ivsClientRef.current?.publishScreenShare?.(null);
       ivsClientRef.current?.broadcastPresentation(null, { presenter: userName, active: false });
       if (cameraStream && isCameraOn) {
         cameraStream.getVideoTracks().forEach(t => (t.enabled = true));
@@ -643,6 +649,7 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
       setScreenStream(null);
     }
     setPresentationMode(null);
+    ivsClientRef.current?.publishScreenShare?.(null);
     ivsClientRef.current?.broadcastPresentation(null, { presenter: userName, active: false });
     if (cameraStream && isCameraOn) {
       cameraStream.getVideoTracks().forEach(t => (t.enabled = true));
@@ -728,7 +735,12 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
           setUserName(enteredName);
           setIsCameraOn(lobbyCam);
           setIsMicOn(lobbyMic);
-          if (presentDirectly) setPresentationMode('screen');
+          if (presentDirectly) {
+            setPresentationMode('screen');
+            setTimeout(() => {
+              handleToggleScreenShare();
+            }, 350);
+          }
           setHasJoinedRoom(true);
         }}
       />
@@ -892,8 +904,15 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
               isCameraOn={isCameraOn}
               isMicOn={isMicOn}
               cameraStream={cameraStream}
-              screenStream={presentationMode ? screenStream : null}
+              screenStream={
+                presentationMode === 'screen'
+                  ? screenStream
+                  : (remotePresentation?.mode === 'screen' && remoteParticipants[remotePresentation.presenter]?.videoTrack
+                      ? new MediaStream([remoteParticipants[remotePresentation.presenter].videoTrack])
+                      : null)
+              }
               onStopPresenting={presentationMode ? handleStopPresenting : () => setRemotePresentation(null)}
+              onStartScreenShare={handleToggleScreenShare}
               timerState={timerState}
               onOpenSidebarSettings={() => {
                 setIsActivitiesOpen(true);

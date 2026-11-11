@@ -20,6 +20,7 @@ export default function ScreenShareStage({
   cameraStream = null,
   screenStream = null,
   onStopPresenting,
+  onStartScreenShare = null,
   timerState = null,
   onOpenSidebarSettings = null,
   theme = 'light',
@@ -78,6 +79,7 @@ export default function ScreenShareStage({
   useEffect(() => {
     if (screenVideoRef.current && screenStream) {
       screenVideoRef.current.srcObject = screenStream;
+      screenVideoRef.current.play().catch(() => {});
     }
   }, [screenStream, mode]);
 
@@ -184,17 +186,122 @@ export default function ScreenShareStage({
         {/* MODE: REAL SCREEN SHARING */}
         {mode === 'screen' && (
           screenStream ? (
-            <video
-              ref={screenVideoRef}
-              autoPlay
-              playsInline
-              style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#000' }}
-            />
+            <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' }}>
+              <video
+                ref={(el) => {
+                  screenVideoRef.current = el;
+                  if (el && screenStream && el.srcObject !== screenStream) {
+                    el.srcObject = screenStream;
+                    el.play().catch(() => {});
+                  }
+                }}
+                autoPlay
+                playsInline
+                muted={isPresenter}
+                style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#000' }}
+              />
+              {isPresenter && (
+                <div style={{
+                  position: 'absolute',
+                  top: 16,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  backgroundColor: 'rgba(32, 33, 36, 0.92)',
+                  backdropFilter: 'blur(8px)',
+                  color: '#fff',
+                  padding: '6px 16px',
+                  borderRadius: '24px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  zIndex: 10
+                }}>
+                  <span className="icon" style={{ fontSize: '18px', color: '#89b754' }}>screen_share</span>
+                  <span>You are presenting to everyone</span>
+                  <button
+                    onClick={onStopPresenting}
+                    style={{
+                      padding: '4px 12px',
+                      borderRadius: '16px',
+                      backgroundColor: '#ea4335',
+                      color: '#fff',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Stop presenting
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', color: '#fff', padding: '32px' }}>
-              <span className="icon" style={{ fontSize: '64px', color: '#89b754' }}>screen_share</span>
-              <div style={{ fontSize: '18px', fontWeight: 500 }}>You are sharing your screen</div>
-              <div style={{ fontSize: '13px', color: '#9aa0a6' }}>All participants in connectt.live can see your display</div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '18px', color: '#fff', padding: '32px', textAlign: 'center' }}>
+              <div style={{
+                width: '72px',
+                height: '72px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(137, 183, 84, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid rgba(137, 183, 84, 0.3)'
+              }}>
+                <span className="icon" style={{ fontSize: '40px', color: '#89b754' }}>screen_share</span>
+              </div>
+              <div>
+                <div style={{ fontSize: '20px', fontWeight: 600, marginBottom: '6px' }}>
+                  {isPresenter ? 'Choose what to share' : `${userName} is presenting their screen`}
+                </div>
+                <div style={{ fontSize: '13px', color: '#9aa0a6', maxWidth: '420px', lineHeight: 1.5 }}>
+                  {isPresenter
+                    ? 'Share your entire screen, an application window, or a browser tab with everyone in connectt.live.'
+                    : 'Connecting to the live display stream... If video does not appear shortly, the presenter may be selecting their window.'}
+                </div>
+              </div>
+              {isPresenter && onStartScreenShare && (
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '8px' }}>
+                  <button
+                    onClick={onStartScreenShare}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 22px',
+                      borderRadius: '24px',
+                      backgroundColor: '#1a73e8',
+                      color: '#fff',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 8px rgba(26,115,232,0.35)'
+                    }}
+                  >
+                    <span className="icon" style={{ fontSize: '18px' }}>present_to_all</span>
+                    Select Screen to Share
+                  </button>
+                  <button
+                    onClick={onStopPresenting}
+                    style={{
+                      padding: '10px 18px',
+                      borderRadius: '24px',
+                      backgroundColor: 'rgba(255,255,255,0.1)',
+                      color: '#e8eaed',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
           )
         )}
