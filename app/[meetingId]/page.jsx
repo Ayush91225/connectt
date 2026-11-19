@@ -33,10 +33,6 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
   // Avatar-derived dynamic accent palette (auto-extracts live SVG stop colors with soft shade)
   const avatarAccent = useAvatarPalette(userName);
 
-  // Dedicated Powder Blue constants for speaking detection UI (decoupled from PFP color)
-  const POWDER_BLUE = '#a8cded';
-  const POWDER_BLUE_GLOW = 'rgba(168, 205, 237, 0.28)';
-
   // Theme Mode: Light themed like the homepage by default (with Dark Mode toggle support)
   const [theme, setTheme] = useState('light');
 
@@ -1166,9 +1162,9 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
               >
                 {isSpeaking && isMicOn && (
                   <span className="speaking-wave-bars">
-                    <span className="sw-bar" style={{ backgroundColor: POWDER_BLUE }}></span>
-                    <span className="sw-bar" style={{ backgroundColor: POWDER_BLUE }}></span>
-                    <span className="sw-bar" style={{ backgroundColor: POWDER_BLUE }}></span>
+                    <span className="sw-bar" style={{ backgroundColor: theme === 'light' ? '#1a73e8' : '#8ab4f8' }}></span>
+                    <span className="sw-bar" style={{ backgroundColor: theme === 'light' ? '#1a73e8' : '#8ab4f8' }}></span>
+                    <span className="sw-bar" style={{ backgroundColor: theme === 'light' ? '#1a73e8' : '#8ab4f8' }}></span>
                   </span>
                 )}
                 <span>{userName}</span>

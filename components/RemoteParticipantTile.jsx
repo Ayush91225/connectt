@@ -242,9 +242,9 @@ export default function RemoteParticipantTile({
       >
         {isSpeaking && isMicOn && (
           <span className="speaking-wave-bars">
-            <span className="sw-bar" style={{ backgroundColor: POWDER_BLUE }}></span>
-            <span className="sw-bar" style={{ backgroundColor: POWDER_BLUE }}></span>
-            <span className="sw-bar" style={{ backgroundColor: POWDER_BLUE }}></span>
+            <span className="sw-bar" style={{ backgroundColor: isLight ? '#1a73e8' : '#8ab4f8' }}></span>
+            <span className="sw-bar" style={{ backgroundColor: isLight ? '#1a73e8' : '#8ab4f8' }}></span>
+            <span className="sw-bar" style={{ backgroundColor: isLight ? '#1a73e8' : '#8ab4f8' }}></span>
           </span>
         )}
         <span style={{ maxWidth: isFilmstrip ? '90px' : '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
