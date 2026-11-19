@@ -72,37 +72,42 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
         if (meta) setIvsDetails(prev => ({ ...prev, ...meta }));
       },
       onParticipantJoined: (p) => {
-        if (!p.userName || p.userName === userName) return;
-        const isNew = !knownParticipantsRef.current.has(p.userName);
+        if (!p) return;
+        const key = p.sessionId || p.userId || p.id;
+        if (key === ivsClientRef.current?.sessionId) return;
+        const isNew = !knownParticipantsRef.current.has(key);
         if (isNew) {
-          knownParticipantsRef.current.add(p.userName);
+          knownParticipantsRef.current.add(key);
           sfx.playJoin();
-          showToast(`${p.userName} joined the meeting`);
+          showToast(`${p.userName || 'Participant'} joined`);
         }
         setRemoteParticipants(prev => ({
           ...prev,
-          [p.userName]: {
-            ...(prev[p.userName] || {}),
+          [key]: {
+            ...(prev[key] || {}),
             ...p,
-            id: p.userName
+            id: key,
+            sessionId: key
           }
         }));
       },
-      onParticipantLeft: (participantName) => {
-        if (!participantName || participantName === userName) return;
-        if (knownParticipantsRef.current.has(participantName)) {
-          knownParticipantsRef.current.delete(participantName);
-          showToast(`${participantName} left the meeting`);
+      onParticipantLeft: (pKey) => {
+        if (knownParticipantsRef.current.has(pKey)) {
+          knownParticipantsRef.current.delete(pKey);
           sfx.playLeave();
         }
         setRemoteParticipants(prev => {
           const updated = { ...prev };
-          delete updated[participantName];
+          const p = updated[pKey];
+          if (p) {
+            showToast(`${p.userName || 'Participant'} left`);
+          }
+          delete updated[pKey];
           return updated;
         });
         setRemotePresentation(prev => {
-          if (prev && prev.presenter === participantName) {
-            showToast(`${participantName} stopped presenting`);
+          if (prev && (prev.sessionId === pKey || prev.presenter === pKey)) {
+            showToast('Presenter stopped presenting');
             return null;
           }
           return prev;
@@ -111,10 +116,9 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
       onPresentationChange: (data) => {
         if (!data) return;
         if (data.sessionId && data.sessionId === ivsClientRef.current?.sessionId) return;
-        if (data.presenter === userName && !data.sessionId) return;
         if (data.active && data.mode) {
           setRemotePresentation(data);
-          showToast(`${data.presenter} is presenting ${data.mode}`);
+          showToast(`${data.presenter || 'Presenter'} is presenting ${data.mode}`);
         } else {
           setRemotePresentation(null);
           showToast(`${data.presenter || 'Presenter'} stopped presenting`);
@@ -156,43 +160,45 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
           }]);
         }
       },
-      onStreamAdded: (participantName, data) => {
-        if (!participantName) return;
+      onStreamAdded: (remoteId, data) => {
+        if (!remoteId) return;
         setRemoteParticipants(prev => ({
           ...prev,
-          [participantName]: {
-            ...(prev[participantName] || {}),
+          [remoteId]: {
+            ...(prev[remoteId] || {}),
             ...data,
-            id: participantName
+            id: remoteId,
+            sessionId: remoteId
           }
         }));
       },
-      onStreamRemoved: (participantName) => {
+      onStreamRemoved: (remoteId) => {
         setRemoteParticipants(prev => {
-          if (!prev[participantName]) return prev;
+          if (!prev[remoteId]) return prev;
           return {
             ...prev,
-            [participantName]: {
-              ...prev[participantName],
-              videoTrack: null
+            [remoteId]: {
+              ...prev[remoteId],
+              videoTrack: null,
+              screenTrack: null
             }
           };
         });
       },
-      onParticipantStateUpdate: (participantName, stateUpdate) => {
-        if (!participantName || participantName === userName) return;
+      onParticipantStateUpdate: (remoteId, stateUpdate) => {
+        if (!remoteId || remoteId === ivsClientRef.current?.sessionId) return;
         if (stateUpdate.isHandRaised !== undefined) {
           if (stateUpdate.isHandRaised) {
             sfx.playHandRaise();
-            showToast(`${participantName} raised hand ✋`);
+            showToast(`${stateUpdate.userName || 'Participant'} raised hand`);
           }
         }
         setRemoteParticipants(prev => {
-          if (!prev[participantName]) return prev;
+          if (!prev[remoteId]) return prev;
           return {
             ...prev,
-            [participantName]: {
-              ...prev[participantName],
+            [remoteId]: {
+              ...prev[remoteId],
               ...stateUpdate
             }
           };
@@ -1028,11 +1034,11 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
                   presentationMode === 'screen'
                     ? screenStream
                     : (remotePresentation?.mode === 'screen'
-                        ? (remoteParticipants[remotePresentation.presenter]?.screenStream ||
-                           (remoteParticipants[remotePresentation.presenter]?.screenTrack
-                              ? new MediaStream([remoteParticipants[remotePresentation.presenter].screenTrack])
-                              : (remoteParticipants[remotePresentation.presenter]?.videoTrack
-                                  ? new MediaStream([remoteParticipants[remotePresentation.presenter].videoTrack])
+                        ? (Object.values(remoteParticipants).find(p => p.screenStream || p.screenTrack)?.screenStream ||
+                           (Object.values(remoteParticipants).find(p => p.screenTrack)
+                              ? new MediaStream([Object.values(remoteParticipants).find(p => p.screenTrack).screenTrack])
+                              : (Object.values(remoteParticipants).find(p => p.videoTrack)
+                                  ? new MediaStream([Object.values(remoteParticipants).find(p => p.videoTrack).videoTrack])
                                   : null)))
                         : null)
                 }
@@ -1053,7 +1059,7 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
             {Object.keys(remoteParticipants).length > 0 && (
               <div className="gm-presentation-filmstrip">
                 {Object.values(remoteParticipants).map((p) => (
-                  <div key={p.id || p.userName} className="gm-filmstrip-tile">
+                  <div key={p.sessionId || p.id || p.userName} className="gm-filmstrip-tile">
                     <RemoteParticipantTile
                       participant={p}
                       theme={theme}
@@ -1174,7 +1180,7 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
             {/* Remote Connected Participant Tiles */}
             {Object.values(remoteParticipants).map((p) => (
               <RemoteParticipantTile
-                key={p.id}
+                key={p.sessionId || p.id}
                 participant={p}
                 theme={theme}
                 tileCount={1 + Object.keys(remoteParticipants).length}

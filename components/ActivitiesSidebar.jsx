@@ -824,7 +824,7 @@ export default function ActivitiesSidebar({
                   .filter(p => !peopleSearch || (p.userName || '').toLowerCase().includes(peopleSearch.toLowerCase()))
                   .map(p => (
                     <div
-                      key={p.id || p.userName}
+                      key={p.sessionId || p.id || p.userName}
                       style={{
                         display: 'flex',
                         alignItems: 'center',

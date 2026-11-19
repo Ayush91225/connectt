@@ -3,7 +3,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { sfx } from '../lib/audio';
 
-export default function SlideDeckPresenter({ theme = 'light' }) {
+export default function SlideDeckPresenter({
+  theme = 'light',
+  onSync = null,
+  syncData = null,
+  isPresenter = false
+}) {
   const isLight = theme === 'light';
   const cBg = isLight ? '#fbfbfb' : '#0c0d0f';
   const cText = isLight ? '#1a1814' : '#ffffff';
@@ -19,16 +24,44 @@ export default function SlideDeckPresenter({ theme = 'light' }) {
 
   const totalPages = uploadedFile?.pageCount || 1;
 
+  // Sync state from remote presenter
+  useEffect(() => {
+    if (!syncData) return;
+    if (syncData.uploadedFile && (!uploadedFile || uploadedFile.name !== syncData.uploadedFile.name)) {
+      setUploadedFile(syncData.uploadedFile);
+    }
+    if (syncData.currentPage !== undefined) {
+      setCurrentPage(syncData.currentPage);
+    }
+    if (syncData.laserPos) {
+      setLaserPos(syncData.laserPos);
+      setLaserActive(Boolean(syncData.laserActive));
+    }
+  }, [syncData]);
+
+  const broadcastSync = (nextPage, nextFile, laser) => {
+    onSync?.({
+      uploadedFile: nextFile !== undefined ? nextFile : uploadedFile,
+      currentPage: nextPage !== undefined ? nextPage : currentPage,
+      laserPos: laser !== undefined ? laser : laserPos,
+      laserActive: laser !== undefined ? Boolean(laserActive) : false
+    });
+  };
+
   const handleNext = () => {
     if (currentPage < totalPages) {
-      setCurrentPage(p => p + 1);
+      const p = currentPage + 1;
+      setCurrentPage(p);
+      broadcastSync(p);
       sfx.playReaction();
     }
   };
 
   const handlePrev = () => {
     if (currentPage > 1) {
-      setCurrentPage(p => p - 1);
+      const p = currentPage - 1;
+      setCurrentPage(p);
+      broadcastSync(p);
       sfx.playReaction();
     }
   };
@@ -39,14 +72,17 @@ export default function SlideDeckPresenter({ theme = 'light' }) {
     const isPdf = file.type === 'application/pdf' || file.name.endsWith('.pdf');
     const isPpt = file.name.endsWith('.ppt') || file.name.endsWith('.pptx');
 
-    setUploadedFile({
+    const fileMeta = {
       name: file.name,
       size: (file.size / (1024 * 1024)).toFixed(1) + ' MB',
       type: isPdf ? 'pdf' : (isPpt ? 'pptx' : 'doc'),
       url: fileUrl,
       pageCount: isPdf ? 12 : 8
-    });
+    };
+
+    setUploadedFile(fileMeta);
     setCurrentPage(1);
+    broadcastSync(1, fileMeta);
     sfx.playReaction();
   };
 

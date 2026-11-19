@@ -149,7 +149,7 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 		JoinedAt:   time.Now(),
 		LastSeen:   time.Now(),
 		conn:       conn,
-		send:       make(chan []byte, 256),
+		send:       make(chan []byte, 1024),
 		room:       room,
 	}
 

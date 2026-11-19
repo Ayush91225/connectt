@@ -355,14 +355,26 @@ export default function ScreenShareStage({
         {/* MODE: FULL STAGE DESMOS GRAPHING */}
         {mode === 'desmos_graph' && (
           <div style={{ width: '100%', height: '100%', padding: '16px', backgroundColor: '#18191b' }}>
-            <DesmosCalculator type="graphing" />
+            <DesmosCalculator
+              type="graphing"
+              theme={theme}
+              onSync={(payload) => onToolSync?.('desmos_graph', 'CALC', payload)}
+              syncData={toolSyncData?.desmos_graph}
+              isPresenter={isPresenter}
+            />
           </div>
         )}
 
         {/* MODE: FULL STAGE DESMOS SCIENTIFIC */}
         {mode === 'desmos_sci' && (
           <div style={{ width: '100%', height: '100%', padding: '16px', backgroundColor: theme === 'light' ? '#fbfbfb' : '#18191b' }}>
-            <DesmosCalculator type="scientific" theme={theme} />
+            <DesmosCalculator
+              type="scientific"
+              theme={theme}
+              onSync={(payload) => onToolSync?.('desmos_sci', 'CALC', payload)}
+              syncData={toolSyncData?.desmos_sci}
+              isPresenter={isPresenter}
+            />
           </div>
         )}
 
@@ -380,7 +392,13 @@ export default function ScreenShareStage({
         {/* MODE: FULL STAGE FLASHCARDS */}
         {mode === 'flashcards' && (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: theme === 'light' ? '#fbfbfb' : '#18191b' }}>
-            <FlashcardsDeck isStage={true} theme={theme} />
+            <FlashcardsDeck
+              isStage={true}
+              theme={theme}
+              onSync={(payload) => onToolSync?.('flashcards', 'CARD', payload)}
+              syncData={toolSyncData?.flashcards}
+              isPresenter={isPresenter}
+            />
           </div>
         )}
 
@@ -391,6 +409,7 @@ export default function ScreenShareStage({
               theme={theme}
               onSync={(payload) => onToolSync?.('youtube', 'PLAY', payload)}
               syncData={toolSyncData?.youtube}
+              isPresenter={isPresenter}
             />
           </div>
         )}
@@ -398,7 +417,12 @@ export default function ScreenShareStage({
         {/* MODE: FULL STAGE SLIDES */}
         {mode === 'slides' && (
           <div style={{ width: '100%', height: '100%', backgroundColor: theme === 'light' ? '#fbfbfb' : '#0e0e0e' }}>
-            <SlideDeckPresenter theme={theme} />
+            <SlideDeckPresenter
+              theme={theme}
+              onSync={(payload) => onToolSync?.('slides', 'PAGE', payload)}
+              syncData={toolSyncData?.slides}
+              isPresenter={isPresenter}
+            />
           </div>
         )}
 

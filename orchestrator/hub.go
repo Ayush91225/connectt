@@ -240,7 +240,7 @@ func (c *Client) readPump() {
 		c.conn.Close()
 	}()
 
-	c.conn.SetReadLimit(512 * 1024) // 512 KB limit for whiteboard/signals
+	c.conn.SetReadLimit(4 * 1024 * 1024) // 4 MB limit for rich whiteboards, slide metadata & signals
 	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	c.conn.SetPongHandler(func(string) error {
 		c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))

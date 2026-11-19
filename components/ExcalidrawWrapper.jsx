@@ -79,9 +79,9 @@ export default function ExcalidrawWrapper({
 
   const handleAPIReady = useCallback((api) => {
     excalidrawAPIRef.current = api;
-    // If we have initial syncData on load, apply it
-    if (syncData?.elements && syncData.elements.length > 0) {
-      api.updateScene({ elements: syncData.elements });
+    const initialEls = syncData?.elements || savedElementsRef.current;
+    if (initialEls && initialEls.length > 0) {
+      api.updateScene({ elements: initialEls });
     }
   }, [syncData]);
 

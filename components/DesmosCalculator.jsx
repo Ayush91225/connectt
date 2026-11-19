@@ -2,10 +2,17 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 
-export default function DesmosCalculator({ type = 'graphing' }) {
+export default function DesmosCalculator({
+  type = 'graphing',
+  theme = 'light',
+  onSync = null,
+  syncData = null,
+  isPresenter = false
+}) {
   const containerRef = useRef(null);
   const calcInstanceRef = useRef(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const isRemoteUpdatingRef = useRef(false);
 
   useEffect(() => {
     // Check if Desmos is already in window
@@ -29,6 +36,18 @@ export default function DesmosCalculator({ type = 'graphing' }) {
     }
   }, []);
 
+  // Sync state from remote presenter
+  useEffect(() => {
+    if (!calcInstanceRef.current || !syncData?.state) return;
+    try {
+      isRemoteUpdatingRef.current = true;
+      calcInstanceRef.current.setState(syncData.state);
+    } catch (e) {}
+    setTimeout(() => {
+      isRemoteUpdatingRef.current = false;
+    }, 100);
+  }, [syncData]);
+
   useEffect(() => {
     if (isLoaded && containerRef.current && window.Desmos) {
       if (calcInstanceRef.current) {
@@ -43,9 +62,26 @@ export default function DesmosCalculator({ type = 'graphing' }) {
           zoomButtons: true,
           border: false
         });
-        // Set sample functions
-        calcInstanceRef.current.setExpression({ id: 'graph1', latex: 'y=\\sin(x)', color: '#89b754' });
-        calcInstanceRef.current.setExpression({ id: 'graph2', latex: 'y=x^2', color: '#7cacf8' });
+
+        // Set initial state or sample functions
+        if (syncData?.state) {
+          calcInstanceRef.current.setState(syncData.state);
+        } else {
+          calcInstanceRef.current.setExpression({ id: 'graph1', latex: 'y=\\sin(x)', color: '#89b754' });
+          calcInstanceRef.current.setExpression({ id: 'graph2', latex: 'y=x^2', color: '#7cacf8' });
+        }
+
+        let changeTimer = null;
+        calcInstanceRef.current.observeEvent('change', () => {
+          if (isRemoteUpdatingRef.current) return;
+          if (changeTimer) clearTimeout(changeTimer);
+          changeTimer = setTimeout(() => {
+            if (calcInstanceRef.current) {
+              const state = calcInstanceRef.current.getState();
+              onSync?.({ state });
+            }
+          }, 150);
+        });
       } else {
         calcInstanceRef.current = window.Desmos.ScientificCalculator(containerRef.current, {
           border: false

@@ -16,7 +16,12 @@ const YTIcon = ({ size = 18 }) => (
   </svg>
 );
 
-export default function YouTubeSharingStage({ theme = 'light', onSync = null, syncData = null }) {
+export default function YouTubeSharingStage({
+  theme = 'light',
+  onSync = null,
+  syncData = null,
+  isPresenter = false
+}) {
   const isLight = theme === 'light';
 
   const cBg     = isLight ? '#f7f5f2' : '#0e0f10';
@@ -27,14 +32,82 @@ export default function YouTubeSharingStage({ theme = 'light', onSync = null, sy
   const cSubtle = isLight ? '#6b6560' : '#6e7178';
 
   const [currentVideo, setCurrentVideo] = useState(null);
+  const [isPlaying, setIsPlaying]       = useState(true);
   const [inputUrl, setInputUrl]         = useState('');
   const [error, setError]               = useState('');
+  const iframeRef                       = useRef(null);
+  const lastStateChangeRef              = useRef(0);
 
+  // Send postMessage command to YouTube iframe
+  const sendIframeCommand = (func, args = []) => {
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func, args }),
+        '*'
+      );
+    }
+  };
+
+  // Sync state from remote presenter
   React.useEffect(() => {
-    if (syncData?.videoId) {
+    if (!syncData) return;
+    if (syncData.videoId && (!currentVideo || currentVideo.id !== syncData.videoId)) {
       setCurrentVideo({ id: syncData.videoId, title: syncData.title || 'Synchronized YouTube Stream' });
     }
+    if (syncData.action === 'PAUSE') {
+      setIsPlaying(false);
+      sendIframeCommand('pauseVideo');
+      if (syncData.time !== undefined) {
+        sendIframeCommand('seekTo', [syncData.time, true]);
+      }
+    } else if (syncData.action === 'PLAY') {
+      setIsPlaying(true);
+      if (syncData.time !== undefined) {
+        sendIframeCommand('seekTo', [syncData.time, true]);
+      }
+      sendIframeCommand('playVideo');
+    } else if (syncData.action === 'SEEK' && syncData.time !== undefined) {
+      sendIframeCommand('seekTo', [syncData.time, true]);
+    }
   }, [syncData]);
+
+  // Listen to postMessage from YouTube iframe
+  React.useEffect(() => {
+    const handleMessage = (e) => {
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        if (data && data.event === 'infoDelivery' && data.info) {
+          if (data.info.playerState === 1 && !isPlaying) {
+            setIsPlaying(true);
+            if (isPresenter && Date.now() - lastStateChangeRef.current > 500) {
+              lastStateChangeRef.current = Date.now();
+              onSync?.({ action: 'PLAY', videoId: currentVideo?.id, time: data.info.currentTime });
+            }
+          } else if (data.info.playerState === 2 && isPlaying) {
+            setIsPlaying(false);
+            if (isPresenter && Date.now() - lastStateChangeRef.current > 500) {
+              lastStateChangeRef.current = Date.now();
+              onSync?.({ action: 'PAUSE', videoId: currentVideo?.id, time: data.info.currentTime });
+            }
+          }
+        }
+      } catch (err) {}
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [isPresenter, currentVideo, isPlaying, onSync]);
+
+  const handleTogglePlayPause = () => {
+    const nextPlay = !isPlaying;
+    setIsPlaying(nextPlay);
+    sendIframeCommand(nextPlay ? 'playVideo' : 'pauseVideo');
+    onSync?.({
+      action: nextPlay ? 'PLAY' : 'PAUSE',
+      videoId: currentVideo?.id
+    });
+    sfx.playToggle(nextPlay);
+  };
 
   const extractVideoId = (input) => {
     if (!input) return null;
@@ -62,7 +135,8 @@ export default function YouTubeSharingStage({ theme = 'light', onSync = null, sy
     const id = extractVideoId(inputUrl);
     if (id) {
       setCurrentVideo({ id, title: 'Synchronized YouTube Stream' });
-      onSync?.({ videoId: id, title: 'Synchronized YouTube Stream' });
+      setIsPlaying(true);
+      onSync?.({ videoId: id, title: 'Synchronized YouTube Stream', action: 'PLAY' });
       setInputUrl('');
       sfx.playReaction();
     } else {
@@ -79,17 +153,35 @@ export default function YouTubeSharingStage({ theme = 'light', onSync = null, sy
             <YTIcon size={16} />
             <span style={{ fontSize: '13px', fontWeight: 500, color: cText }}>{currentVideo.title}</span>
           </div>
-          <button
-            onClick={() => { setCurrentVideo(null); sfx.playToggle(false); }}
-            style={{ padding: '6px 16px', borderRadius: '9999px', background: isLight ? '#f5f3ef' : 'rgba(255,255,255,0.07)', color: cText, border: `1px solid ${cBorder}`, fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}
-          >
-            Change video
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* Synchronized Play/Pause Button */}
+            <button
+              onClick={handleTogglePlayPause}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '6px 14px', borderRadius: '9999px',
+                background: isPlaying ? 'rgba(234,67,53,0.1)' : 'rgba(26,115,232,0.1)',
+                color: isPlaying ? '#ea4335' : '#1a73e8',
+                border: `1px solid ${isPlaying ? 'rgba(234,67,53,0.25)' : 'rgba(26,115,232,0.25)'}`,
+                fontSize: '12px', fontWeight: 600, cursor: 'pointer'
+              }}
+            >
+              <span className="icon" style={{ fontSize: '16px' }}>{isPlaying ? 'pause' : 'play_arrow'}</span>
+              <span>{isPlaying ? 'Pause for all' : 'Play for all'}</span>
+            </button>
+            <button
+              onClick={() => { setCurrentVideo(null); sfx.playToggle(false); }}
+              style={{ padding: '6px 16px', borderRadius: '9999px', background: isLight ? '#f5f3ef' : 'rgba(255,255,255,0.07)', color: cText, border: `1px solid ${cBorder}`, fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}
+            >
+              Change video
+            </button>
+          </div>
         </div>
         <div style={{ flex: 1, position: 'relative' }}>
           <iframe
+            ref={iframeRef}
             key={currentVideo.id}
-            src={`https://www.youtube.com/embed/${currentVideo.id}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1`}
+            src={`https://www.youtube.com/embed/${currentVideo.id}?autoplay=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}&rel=0&modestbranding=1`}
             title={currentVideo.title}
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

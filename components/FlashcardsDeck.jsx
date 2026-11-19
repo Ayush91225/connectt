@@ -26,7 +26,14 @@ const DECKS = [
   }
 ];
 
-export default function FlashcardsDeck({ onShareToStage, isStage = false, theme = 'light' }) {
+export default function FlashcardsDeck({
+  onShareToStage,
+  isStage = false,
+  theme = 'light',
+  onSync = null,
+  syncData = null,
+  isPresenter = false
+}) {
   const isLight = theme === 'light';
   const cText    = isLight ? '#1a1814' : '#ffffff';
   const cSubtle  = isLight ? '#6b6560' : '#9aa0a6';
@@ -40,20 +47,52 @@ export default function FlashcardsDeck({ onShareToStage, isStage = false, theme 
   const [cards,     setCards]     = useState(DECKS[0].cards);
   const [mastered,  setMastered]  = useState(new Set());
 
+  // Sync state from presenter
+  React.useEffect(() => {
+    if (!syncData) return;
+    if (syncData.deckIdx !== undefined && syncData.deckIdx !== deckIdx) {
+      setDeckIdx(syncData.deckIdx);
+      setCards(DECKS[syncData.deckIdx]?.cards || DECKS[0].cards);
+    }
+    if (syncData.cardIdx !== undefined) setCardIdx(syncData.cardIdx);
+    if (syncData.isFlipped !== undefined) setIsFlipped(syncData.isFlipped);
+  }, [syncData]);
+
+  const broadcastSync = (dIdx, cIdx, flipped) => {
+    onSync?.({
+      deckIdx: dIdx !== undefined ? dIdx : deckIdx,
+      cardIdx: cIdx !== undefined ? cIdx : cardIdx,
+      isFlipped: flipped !== undefined ? flipped : isFlipped
+    });
+  };
+
   const currentCard = cards[cardIdx] || cards[0];
   const isMastered  = mastered.has(cardIdx);
 
-  const flip = () => { setIsFlipped(f => !f); sfx.playToggle(!isFlipped); };
+  const flip = () => {
+    const nextF = !isFlipped;
+    setIsFlipped(nextF);
+    broadcastSync(deckIdx, cardIdx, nextF);
+    sfx.playToggle(nextF);
+  };
 
   const next = () => {
     setIsFlipped(false);
-    setTimeout(() => setCardIdx(i => (i + 1) % cards.length), 80);
+    const nextIdx = (cardIdx + 1) % cards.length;
+    setTimeout(() => {
+      setCardIdx(nextIdx);
+      broadcastSync(deckIdx, nextIdx, false);
+    }, 80);
     sfx.playReaction();
   };
 
   const prev = () => {
     setIsFlipped(false);
-    setTimeout(() => setCardIdx(i => (i - 1 + cards.length) % cards.length), 80);
+    const prevIdx = (cardIdx - 1 + cards.length) % cards.length;
+    setTimeout(() => {
+      setCardIdx(prevIdx);
+      broadcastSync(deckIdx, prevIdx, false);
+    }, 80);
     sfx.playReaction();
   };
 
