@@ -8,11 +8,13 @@ export default function AudioQuickMenu({
   onClose,
   isMicOn,
   onToggleMic,
+  availableAudioDevices = [],
+  selectedAudioLabel = 'Microphone (Built-in)',
+  onSelectAudioLabel = null,
   onOpenSettings,
   showToast,
   theme = 'light'
 }) {
-  const [selectedMic, setSelectedMic] = useState('Microphone (Built-in)');
   const [isNoiseCancel, setIsNoiseCancel] = useState(true);
   const [isTesting, setIsTesting] = useState(false);
 
@@ -20,6 +22,19 @@ export default function AudioQuickMenu({
     setIsTesting(true);
     sfx.playJoin();
     setTimeout(() => setIsTesting(false), 1200);
+  };
+
+  const handleSwitchMic = () => {
+    if (availableAudioDevices.length > 1) {
+      const currentIdx = availableAudioDevices.findIndex(d => d.label === selectedAudioLabel);
+      const nextIdx = (currentIdx + 1) % availableAudioDevices.length;
+      const nextDev = availableAudioDevices[nextIdx];
+      const nextLabel = nextDev.label || `Microphone ${nextIdx + 1}`;
+      onSelectAudioLabel?.(nextLabel);
+      showToast?.(`${nextLabel} selected`);
+    } else {
+      showToast?.(`${selectedAudioLabel} selected`);
+    }
   };
 
   return (
@@ -31,17 +46,15 @@ export default function AudioQuickMenu({
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Mic Device Select */}
+      {/* Mic Device Select (Real hardware device switching) */}
       <div
         className="quick-cam-device-select"
-        onClick={() => {
-          const next = selectedMic.includes('Built-in') ? 'External Audio (USB)' : 'Microphone (Built-in)';
-          setSelectedMic(next);
-          showToast?.(`${next} selected`);
-        }}
+        onClick={handleSwitchMic}
       >
         <span className="icon" style={{ fontSize: '18px' }}>mic</span>
-        <span>{selectedMic}</span>
+        <span style={{ maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {selectedAudioLabel}
+        </span>
         <span className="icon" style={{ fontSize: '16px' }}>expand_more</span>
       </div>
 
@@ -72,7 +85,7 @@ export default function AudioQuickMenu({
       {/* Audio Settings Gear */}
       <button
         className="home-icon-btn"
-        style={{ width: '32px', height: '32px', color: '#c4c7c5' }}
+        style={{ width: '32px', height: '32px', color: theme === 'light' ? '#6b6560' : '#c4c7c5' }}
         data-tooltip="Settings"
         onClick={() => {
           onClose();

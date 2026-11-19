@@ -1,16 +1,20 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import OrbAvatar from './OrbAvatar';
 import { getAvatarAccentColor } from '../lib/avatar';
 
 export default function RemoteParticipantTile({
   participant,
   theme = 'light',
-  tileCount = 2
+  tileCount = 2,
+  isFilmstrip = false,
+  isPinned = false,
+  onPin = null
 }) {
   const videoRef = useRef(null);
   const audioRef = useRef(null);
+  const [isHovered, setIsHovered] = useState(false);
   const isLight = theme === 'light';
 
   const {
@@ -21,56 +25,67 @@ export default function RemoteParticipantTile({
     isSpeaking = false,
     isHandRaised = false,
     videoTrack = null,
-    audioTrack = null
+    audioTrack = null,
+    stream = null
   } = participant;
 
   const avatarAccent = getAvatarAccentColor(userName);
-  const POWDER_BLUE = '#a8cded';
-  const POWDER_BLUE_GLOW = 'rgba(168, 205, 237, 0.28)';
+  const SPEAKER_BORDER = '#1a73e8';
 
   // Attach remote video track
   useEffect(() => {
-    if (videoRef.current && videoTrack && isCameraOn) {
-      const ms = new MediaStream([videoTrack]);
-      videoRef.current.srcObject = ms;
-    } else if (videoRef.current) {
-      videoRef.current.srcObject = null;
+    if (videoRef.current) {
+      if (videoTrack && isCameraOn) {
+        const ms = stream || new MediaStream([videoTrack]);
+        if (videoRef.current.srcObject !== ms) {
+          videoRef.current.srcObject = ms;
+          videoRef.current.play().catch(() => {});
+        }
+      } else {
+        videoRef.current.srcObject = null;
+      }
     }
-  }, [videoTrack, isCameraOn]);
+  }, [videoTrack, isCameraOn, stream]);
 
   // Attach remote audio track
   useEffect(() => {
     if (audioRef.current && audioTrack) {
-      const ms = new MediaStream([audioTrack]);
-      audioRef.current.srcObject = ms;
+      const ms = stream || new MediaStream([audioTrack]);
+      if (audioRef.current.srcObject !== ms) {
+        audioRef.current.srcObject = ms;
+        audioRef.current.play().catch(() => {});
+      }
     }
-  }, [audioTrack]);
+  }, [audioTrack, stream]);
 
-  const orbSize = tileCount > 2 ? 110 : 150;
+  const orbSize = isFilmstrip ? 58 : (tileCount > 4 ? 90 : (tileCount > 2 ? 110 : 150));
 
   return (
     <div
-      className="call-main-tile remote-participant-tile"
+      className={`call-main-tile remote-participant-tile ${isFilmstrip ? 'filmstrip-tile' : ''}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       style={{
         position: 'relative',
         width: '100%',
         height: '100%',
-        minHeight: '220px',
+        minHeight: isFilmstrip ? '110px' : (tileCount <= 2 ? '220px' : '150px'),
+        maxHeight: isFilmstrip ? '160px' : 'none',
         background: !isCameraOn
           ? (isLight ? '#ffffff' : avatarAccent.tileBg)
-          : 'linear-gradient(135deg, #3d495a 0%, #29323f 100%)',
+          : '#202124',
         border: (isSpeaking && isMicOn)
-          ? `2px solid ${POWDER_BLUE}`
-          : (isLight ? '1px solid #e8e4de' : '1.5px solid rgba(255,255,255,0.08)'),
+          ? `2px solid ${SPEAKER_BORDER}`
+          : (isPinned ? '2px solid #1a73e8' : (isLight ? '1px solid #e8e4de' : '1px solid rgba(255,255,255,0.08)')),
         boxShadow: (isSpeaking && isMicOn)
-          ? `0 0 16px ${POWDER_BLUE_GLOW}`
-          : (isLight ? '0 4px 20px rgba(0,0,0,0.04)' : '0 8px 32px rgba(0,0,0,0.45)'),
-        borderRadius: '16px',
+          ? '0 0 0 1px #1a73e8'
+          : (isLight ? '0 2px 8px rgba(0,0,0,0.04)' : '0 4px 16px rgba(0,0,0,0.3)'),
+        borderRadius: isFilmstrip ? '12px' : '16px',
         overflow: 'hidden',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        transition: 'border-color 0.2s ease, box-shadow 0.2s ease, background 0.3s ease'
+        transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)'
       }}
     >
       {/* Remote Video Stream */}
@@ -116,23 +131,22 @@ export default function RemoteParticipantTile({
         <div
           style={{
             position: 'absolute',
-            top: '12px',
-            left: '12px',
+            top: isFilmstrip ? '6px' : '10px',
+            left: isFilmstrip ? '6px' : '10px',
             display: 'flex',
             alignItems: 'center',
             gap: '4px',
-            padding: '4px 10px',
+            padding: isFilmstrip ? '2px 6px' : '3px 8px',
             borderRadius: '20px',
             backgroundColor: '#0b57d0',
             color: '#ffffff',
-            fontSize: '11px',
+            fontSize: isFilmstrip ? '10px' : '11px',
             fontWeight: 600,
-            boxShadow: '0 2px 8px rgba(11, 87, 208, 0.4)',
             zIndex: 10
           }}
         >
-          <span>✋</span>
-          <span>Hand raised</span>
+          <span className="icon" style={{ fontSize: isFilmstrip ? '12px' : '14px' }}>back_hand</span>
+          {!isFilmstrip && <span>Hand raised</span>}
         </div>
       )}
 
@@ -141,10 +155,10 @@ export default function RemoteParticipantTile({
         className={`call-tile-mic-status ${isCameraOn ? 'translucent-muted' : 'blue-muted'}`}
         style={{
           position: 'absolute',
-          top: '12px',
-          right: '12px',
-          width: '28px',
-          height: '28px',
+          top: isFilmstrip ? '6px' : '10px',
+          right: isFilmstrip ? '6px' : '10px',
+          width: isFilmstrip ? '22px' : '28px',
+          height: isFilmstrip ? '22px' : '28px',
           borderRadius: '50%',
           display: 'flex',
           alignItems: 'center',
@@ -159,32 +173,83 @@ export default function RemoteParticipantTile({
           zIndex: 10
         }}
       >
-        <span className="icon" style={{ fontSize: '15px' }}>
+        <span className="icon" style={{ fontSize: isFilmstrip ? '12px' : '15px' }}>
           {!isMicOn ? 'mic_off' : 'mic'}
         </span>
       </div>
+
+      {/* Hover Action Overlay: Pin button */}
+      {isHovered && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: '24px',
+            padding: '4px 10px',
+            zIndex: 15,
+            transition: 'opacity 0.15s ease'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => onPin?.(id || userName)}
+            title={isPinned ? 'Unpin' : 'Pin to main screen'}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#ffffff',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '4px'
+            }}
+          >
+            <span className="icon" style={{ fontSize: '18px', color: isPinned ? '#a8c7fa' : '#ffffff' }}>
+              {isPinned ? 'keep_off' : 'push_pin'}
+            </span>
+          </button>
+        </div>
+      )}
 
       {/* Bottom Left Name Tag */}
       <div
         className="call-tile-name-tag"
         style={{
           position: 'absolute',
-          bottom: '12px',
-          left: '12px',
+          bottom: isFilmstrip ? '6px' : '10px',
+          left: isFilmstrip ? '6px' : '10px',
           display: 'flex',
           alignItems: 'center',
-          gap: '6px',
-          padding: '4px 10px',
+          gap: '5px',
+          padding: isFilmstrip ? '2px 8px' : '4px 10px',
           borderRadius: '20px',
-          backgroundColor: isLight ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.55)',
+          backgroundColor: isLight ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.6)',
           backdropFilter: 'blur(8px)',
           color: isLight ? '#1a1814' : '#ffffff',
-          fontSize: '12px',
+          fontSize: isFilmstrip ? '11px' : '12px',
           fontWeight: 500,
+          boxShadow: isLight ? '0 1px 4px rgba(0,0,0,0.08)' : '0 1px 4px rgba(0,0,0,0.4)',
           zIndex: 10
         }}
       >
-        <span>{userName}</span>
+        {isSpeaking && isMicOn && (
+          <span className="speaking-wave-bars">
+            <span className="sw-bar" style={{ backgroundColor: POWDER_BLUE }}></span>
+            <span className="sw-bar" style={{ backgroundColor: POWDER_BLUE }}></span>
+            <span className="sw-bar" style={{ backgroundColor: POWDER_BLUE }}></span>
+          </span>
+        )}
+        <span style={{ maxWidth: isFilmstrip ? '90px' : '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {userName}
+        </span>
       </div>
     </div>
   );

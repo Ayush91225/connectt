@@ -18,7 +18,17 @@ export default function ActivitiesSidebar({
   isScreenSharing,
   presentationMode,
   timerState,
-  theme = 'light'
+  theme = 'light',
+  chatMessages = [],
+  onSendMessage = null,
+  remoteParticipants = {},
+  isMicOn = false,
+  isCameraOn = false,
+  isHandRaised = false,
+  onHostControl = null,
+  hostControls = null,
+  showToast = null,
+  meetingId = ''
 }) {
   const isLight = theme === 'light';
   const cBg = isLight ? '#ffffff' : '#1e1f20';
@@ -30,6 +40,7 @@ export default function ActivitiesSidebar({
   const cInputBg = isLight ? '#f5f3ef' : '#131314';
 
   const [speechLang, setSpeechLang] = useState('Spanish (es)');
+  const [peopleSearch, setPeopleSearch] = useState('');
 
   // Report a problem state
   const [reportWhat, setReportWhat] = useState('');
@@ -50,8 +61,8 @@ export default function ActivitiesSidebar({
   const [settingsTab, setSettingsTab] = useState('audio'); // 'audio', 'video', 'host'
 
   // Chat State
-  const [chatMessages, setChatMessages] = useState([]);
   const [newMsg, setNewMsg] = useState('');
+  const [localFileMessages, setLocalFileMessages] = useState([]);
   const [allowChat, setAllowChat] = useState(true);
   const fileInputRef = useRef(null);
 
@@ -314,6 +325,8 @@ export default function ActivitiesSidebar({
           )}
           <h2 style={{ fontSize: '18px', fontWeight: 500, color: cText, margin: 0 }}>
             {activeActivity === 'chat' ? 'In-call messages'
+              : activeActivity === 'people' ? `People (${1 + Object.keys(remoteParticipants).length})`
+              : activeActivity === 'host_controls' ? 'Host controls'
               : activeActivity === 'translation' ? 'Speech translation'
               : activeActivity === 'timer' ? 'Timer'
               : activeActivity === 'chess' ? 'Multiplayer Chess'
@@ -392,7 +405,7 @@ export default function ActivitiesSidebar({
               </div>
               <div>
                 <div style={{ fontSize: '15px', fontWeight: 500, color: cText }}>Timer</div>
-                <div style={{ fontSize: '12px', color: isAlarmRinging ? '#ea4335' : cSubtle, marginTop: '2px' }}>{isAlarmRinging ? "⏰ Time's Up!" : isTimerRunning ? `Running · ${formatTimer(timerSeconds)}` : 'Configure & play on stage'}</div>
+                <div style={{ fontSize: '12px', color: isAlarmRinging ? '#ea4335' : cSubtle, marginTop: '2px' }}>{isAlarmRinging ? "Time's up" : isTimerRunning ? `Running · ${formatTimer(timerSeconds)}` : 'Configure & play on stage'}</div>
               </div>
             </div>
             <span className="icon" style={{ color: cSubtle, fontSize: '20px' }}>chevron_right</span>
@@ -682,6 +695,177 @@ export default function ActivitiesSidebar({
             </div>
           )}
 
+          {/* PEOPLE IN CALL (GOOGLE MEET STYLE) */}
+          {activeActivity === 'people' && (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+              {/* Search Bar */}
+              <div style={{ padding: '12px 20px 8px' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  backgroundColor: cInputBg,
+                  border: `1px solid ${cBorder}`,
+                  borderRadius: '24px',
+                  padding: '8px 14px'
+                }}>
+                  <span className="icon" style={{ fontSize: '18px', color: cSubtle }}>search</span>
+                  <input
+                    type="text"
+                    placeholder="Search for people"
+                    value={peopleSearch}
+                    onChange={(e) => setPeopleSearch(e.target.value)}
+                    style={{
+                      border: 'none',
+                      outline: 'none',
+                      backgroundColor: 'transparent',
+                      color: cText,
+                      fontSize: '13px',
+                      width: '100%'
+                    }}
+                  />
+                  {peopleSearch && (
+                    <button
+                      onClick={() => setPeopleSearch('')}
+                      style={{ border: 'none', background: 'transparent', color: cSubtle, cursor: 'pointer', padding: 0 }}
+                    >
+                      <span className="icon" style={{ fontSize: '16px' }}>close</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Add People CTA */}
+              <div style={{ padding: '4px 20px 12px' }}>
+                <button
+                  onClick={() => {
+                    const link = `https://connectt.live/${meetingId || ''}`;
+                    navigator.clipboard.writeText(link);
+                    showToast?.('Meeting link copied to clipboard');
+                    sfx.playToggle(true);
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '10px 16px',
+                    borderRadius: '12px',
+                    border: `1px dashed ${cBorder}`,
+                    backgroundColor: isLight ? '#f9f9f9' : 'rgba(255, 255, 255, 0.04)',
+                    color: isLight ? '#0b57d0' : '#a8c7fa',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    transition: 'background 0.2s'
+                  }}
+                >
+                  <span className="icon" style={{ fontSize: '18px' }}>person_add</span>
+                  <span>Add people & invite to call</span>
+                </button>
+              </div>
+
+              {/* Section Header */}
+              <div style={{
+                padding: '8px 20px',
+                fontSize: '12px',
+                fontWeight: 500,
+                color: cSubtle,
+                borderBottom: `1px solid ${cBorder}`
+              }}>
+                In call ({1 + Object.keys(remoteParticipants).length})
+              </div>
+
+              {/* Participants List */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+                {/* Current User */}
+                {(!peopleSearch || userName.toLowerCase().includes(peopleSearch.toLowerCase())) && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '10px 20px',
+                    borderBottom: `1px solid ${cBorder}`,
+                    backgroundColor: isLight ? 'rgba(0,0,0,0.01)' : 'rgba(255,255,255,0.01)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <OrbAvatar userName={userName} size={36} isSpeaking={isMicOn} isMicOn={isMicOn} />
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: 500, color: cText, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>{userName} (You)</span>
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: 600,
+                            padding: '1px 6px',
+                            borderRadius: '10px',
+                            backgroundColor: isLight ? '#e8f0fe' : '#174ea6',
+                            color: isLight ? '#1967d2' : '#d2e3fc'
+                          }}>
+                            Host
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: cSubtle, marginTop: '2px' }}>Meeting organizer</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {isHandRaised && <span className="icon" style={{ fontSize: '18px', color: '#1a73e8' }} title="Hand raised">back_hand</span>}
+                      <span className="icon" style={{ fontSize: '18px', color: isMicOn ? (isLight ? '#1a1814' : '#fff') : '#ea4335' }}>
+                        {isMicOn ? 'mic' : 'mic_off'}
+                      </span>
+                      <span className="icon" style={{ fontSize: '18px', color: isCameraOn ? (isLight ? '#1a1814' : '#fff') : cSubtle }}>
+                        {isCameraOn ? 'videocam' : 'videocam_off'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Remote Participants */}
+                {Object.values(remoteParticipants)
+                  .filter(p => !peopleSearch || (p.userName || '').toLowerCase().includes(peopleSearch.toLowerCase()))
+                  .map(p => (
+                    <div
+                      key={p.id || p.userName}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 20px',
+                        borderBottom: `1px solid ${cBorder}`,
+                        transition: 'background 0.15s'
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = cCardHover)}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <OrbAvatar userName={p.userName} size={36} isSpeaking={p.isSpeaking && p.isMicOn} isMicOn={p.isMicOn} />
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: 500, color: cText }}>
+                            {p.userName}
+                          </div>
+                          <div style={{ fontSize: '11px', color: cSubtle, marginTop: '2px' }}>
+                            {p.isSpeaking && p.isMicOn ? 'Speaking...' : (p.isCameraOn ? 'Camera on' : 'Participant')}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {p.isHandRaised && <span className="icon" style={{ fontSize: '18px', color: '#1a73e8' }} title="Hand raised">back_hand</span>}
+                        <span className="icon" style={{ fontSize: '18px', color: p.isMicOn ? (isLight ? '#1a1814' : '#fff') : '#ea4335' }}>
+                          {p.isMicOn ? 'mic' : 'mic_off'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+
+                {Object.keys(remoteParticipants).length === 0 && !peopleSearch && (
+                  <div style={{ padding: '28px 20px', textAlign: 'center', color: cSubtle, fontSize: '13px' }}>
+                    <span className="icon" style={{ fontSize: '32px', color: cSubtle, marginBottom: '8px', display: 'block' }}>group</span>
+                    No one else is here yet.<br />Share the meeting link to invite people.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* IN-CALL MESSAGES */}
           {activeActivity === 'chat' && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -885,8 +1069,8 @@ export default function ActivitiesSidebar({
                   gap: '10px',
                   textAlign: 'center'
                 }}>
-                  <span style={{ fontSize: '28px' }}>⏰</span>
-                  <div style={{ fontSize: '15px', fontWeight: 700, color: '#ea4335' }}>Time's Up!</div>
+                  <span className="icon" style={{ fontSize: '28px', color: '#ea4335' }}>alarm</span>
+                  <div style={{ fontSize: '15px', fontWeight: 600, color: '#ea4335' }}>Time's up</div>
                   <button
                     onClick={() => { stopAlarm?.(); sfx.playReaction(); }}
                     style={{
@@ -905,9 +1089,8 @@ export default function ActivitiesSidebar({
               {/* Clock display / custom input */}
               {!isCustomTimerMode ? (
                 <div style={{
-                  background: isLight
-                    ? 'linear-gradient(145deg, #f0ede8 0%, #e8e3dc 100%)'
-                    : 'linear-gradient(145deg, #111213 0%, #1a1b1d 100%)',
+                  background: isLight ? '#f8f9fa' : '#1e1f20',
+                  border: `1px solid ${cBorder}`,
                   borderRadius: '24px',
                   padding: '32px 20px 24px',
                   display: 'flex',
@@ -917,28 +1100,15 @@ export default function ActivitiesSidebar({
                   position: 'relative',
                   overflow: 'hidden'
                 }}>
-                  {/* subtle green glow ring behind clock */}
-                  <div style={{
-                    position: 'absolute', top: '50%', left: '50%',
-                    transform: 'translate(-50%, -60%)',
-                    width: '180px', height: '180px', borderRadius: '50%',
-                    background: isAlarmRinging
-                      ? 'radial-gradient(circle, rgba(234,67,53,0.18) 0%, transparent 70%)'
-                      : isTimerRunning
-                        ? 'radial-gradient(circle, rgba(137,183,84,0.14) 0%, transparent 70%)'
-                        : 'radial-gradient(circle, rgba(137,183,84,0.07) 0%, transparent 70%)',
-                    pointerEvents: 'none'
-                  }} />
                   {/* status badge */}
                   <div style={{
-                    fontSize: '10px', fontWeight: 700, letterSpacing: '1.2px',
-                    textTransform: 'uppercase',
-                    color: isAlarmRinging ? '#ea4335' : isTimerRunning ? '#89b754' : (isLight ? 'rgba(26,24,20,0.4)' : 'rgba(255,255,255,0.3)'),
-                    background: isAlarmRinging ? 'rgba(234,67,53,0.12)' : isTimerRunning ? 'rgba(137,183,84,0.12)' : (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'),
+                    fontSize: '11px', fontWeight: 500,
+                    color: isAlarmRinging ? '#ea4335' : isTimerRunning ? '#1e8e3e' : (isLight ? '#5f6368' : '#9aa0a6'),
+                    background: isAlarmRinging ? 'rgba(234,67,53,0.1)' : isTimerRunning ? 'rgba(30,142,62,0.1)' : (isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.06)'),
                     padding: '3px 10px', borderRadius: '9999px',
-                    border: `1px solid ${isAlarmRinging ? 'rgba(234,67,53,0.3)' : isTimerRunning ? 'rgba(137,183,84,0.3)' : (isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.08)')}`,
+                    border: `1px solid ${isAlarmRinging ? 'rgba(234,67,53,0.2)' : isTimerRunning ? 'rgba(30,142,62,0.2)' : (isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)')}`,
                   }}>
-                    {isAlarmRinging ? '⏰ Time\'s Up' : isTimerRunning ? '● Running' : '○ Paused'}
+                    {isAlarmRinging ? "Time's up" : isTimerRunning ? '● Running' : '○ Paused'}
                   </div>
                   {/* big clock */}
                   <div
@@ -1871,8 +2041,8 @@ export default function ActivitiesSidebar({
                             {quizScore} pts
                           </span>
                           {quizStreak > 1 && (
-                            <span style={{ fontSize: '11px', backgroundColor: 'rgba(234, 67, 53, 0.12)', color: '#ff8a80', padding: '2px 6px', borderRadius: '6px', fontWeight: 600 }}>
-                              🔥 {quizStreak}
+                            <span style={{ fontSize: '11px', backgroundColor: 'rgba(234, 67, 53, 0.12)', color: '#ff8a80', padding: '2px 6px', borderRadius: '6px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              <span className="icon" style={{ fontSize: '13px' }}>local_fire_department</span> {quizStreak}
                             </span>
                           )}
                         </div>
@@ -2165,7 +2335,7 @@ export default function ActivitiesSidebar({
 
               {/* Let Everyone Section */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', opacity: hostManagement ? 1 : 0.4, pointerEvents: hostManagement ? 'auto' : 'none' }}>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: isLight ? '#0b57d0' : '#a8c7fa', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: isLight ? '#0b57d0' : '#a8c7fa' }}>
                   Let everyone
                 </div>
 
@@ -2262,7 +2432,7 @@ export default function ActivitiesSidebar({
 
               {/* Meeting Access Section */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', paddingTop: '16px', borderTop: `1px solid ${cBorder}` }}>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: isLight ? '#0b57d0' : '#a8c7fa', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: isLight ? '#0b57d0' : '#a8c7fa' }}>
                   Meeting access
                 </div>
 

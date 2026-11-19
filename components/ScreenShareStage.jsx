@@ -13,8 +13,9 @@ import TimerStage from './TimerStage';
 import OrbAvatar from './OrbAvatar';
 
 export default function ScreenShareStage({
-  mode = 'screen', // 'screen', 'whiteboard', 'youtube', 'slides', 'chess', 'desmos_graph', 'desmos_sci', 'flashcards', 'code', 'quiz', 'timer'
+  mode = 'screen', // 'screen', 'remote_screen', 'whiteboard', 'youtube', 'slides', 'chess', 'desmos_graph', 'desmos_sci', 'flashcards', 'code', 'quiz', 'timer'
   userName = 'You',
+  presenterName = null,
   isCameraOn = false,
   isMicOn = false,
   cameraStream = null,
@@ -95,6 +96,7 @@ export default function ScreenShareStage({
       case 'code': return 'RUX Code Studio';
       case 'quiz': return 'Live Classroom Quiz';
       case 'timer': return 'Classroom Timer';
+      case 'remote_screen': return 'Screen Share';
       default: return 'Screen';
     }
   };
@@ -183,8 +185,8 @@ export default function ScreenShareStage({
 
       {/* Main Presentation Surface */}
       <div className="gm-presentation-surface">
-        {/* MODE: REAL SCREEN SHARING */}
-        {mode === 'screen' && (
+        {/* MODE: REAL SCREEN SHARING (LOCAL OR REMOTE LIVE STREAM) */}
+        {(mode === 'screen' || mode === 'remote_screen') && (
           screenStream ? (
             <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' }}>
               <video
@@ -240,27 +242,41 @@ export default function ScreenShareStage({
               )}
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '18px', color: '#fff', padding: '32px', textAlign: 'center' }}>
+            <div style={{
+              width: '100%', height: '100%',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              gap: '20px',
+              background: theme === 'light' ? '#f8fafd' : '#17191c',
+              padding: '32px',
+              textAlign: 'center'
+            }}>
               <div style={{
-                width: '72px',
-                height: '72px',
-                borderRadius: '50%',
-                backgroundColor: 'rgba(137, 183, 84, 0.15)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px solid rgba(137, 183, 84, 0.3)'
+                width: '88px', height: '88px', borderRadius: '50%',
+                background: theme === 'light' ? 'rgba(26,115,232,0.08)' : 'rgba(255,255,255,0.06)',
+                border: `1px solid ${theme === 'light' ? 'rgba(26,115,232,0.2)' : 'rgba(255,255,255,0.1)'}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: theme === 'light' ? '0 2px 8px rgba(0,0,0,0.06)' : '0 4px 16px rgba(0,0,0,0.4)'
               }}>
-                <span className="icon" style={{ fontSize: '40px', color: '#89b754' }}>screen_share</span>
+                <span className="icon" style={{ fontSize: '48px', color: theme === 'light' ? '#1a73e8' : '#89b754' }}>
+                  screen_share
+                </span>
               </div>
               <div>
-                <div style={{ fontSize: '20px', fontWeight: 600, marginBottom: '6px' }}>
-                  {isPresenter ? 'Choose what to share' : `${userName} is presenting their screen`}
+                <div style={{
+                  fontSize: '22px', fontWeight: 700, marginBottom: '8px',
+                  color: theme === 'light' ? '#1a1814' : '#e8eaed'
+                }}>
+                  {isPresenter ? 'Choose what to share' : `${presenterName || userName} is sharing their screen`}
                 </div>
-                <div style={{ fontSize: '13px', color: '#9aa0a6', maxWidth: '420px', lineHeight: 1.5 }}>
+                <div style={{
+                  fontSize: '14px', lineHeight: 1.6,
+                  color: theme === 'light' ? '#5f6368' : '#9aa0a6',
+                  maxWidth: '380px'
+                }}>
                   {isPresenter
                     ? 'Share your entire screen, an application window, or a browser tab with everyone in connectt.live.'
-                    : 'Connecting to the live display stream... If video does not appear shortly, the presenter may be selecting their window.'}
+                    : 'Connecting to live screen stream... The presenter\'s display will appear here automatically.'}
                 </div>
               </div>
               {isPresenter && onStartScreenShare && (
@@ -302,6 +318,24 @@ export default function ScreenShareStage({
                   </button>
                 </div>
               )}
+              {!isPresenter && (
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {[0, 1, 2].map(i => (
+                    <div key={i} style={{
+                      width: '8px', height: '8px', borderRadius: '50%',
+                      background: theme === 'light' ? '#1a73e8' : '#89b754',
+                      opacity: 0.7,
+                      animation: `pulse 1.4s ease-in-out ${i * 0.2}s infinite`
+                    }} />
+                  ))}
+                </div>
+              )}
+              <style dangerouslySetInnerHTML={{ __html: `
+                @keyframes pulse {
+                  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+                  40% { transform: scale(1); opacity: 1; }
+                }
+              ` }} />
             </div>
           )
         )}

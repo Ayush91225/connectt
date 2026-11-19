@@ -3,9 +3,11 @@
   "version": "2.0.0",
   "description": "Pixel-perfect Google Meet clone built with Next.js and Material 3 Expressive design.",
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "node server-ws.mjs",
+    "dev:next": "next dev -p 3000",
+    "dev:ws": "node server-ws.mjs",
     "build": "next build",
-    "start": "next start -p 3000"
+    "start": "node server-ws.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1161.0",
@@ -17,7 +19,8 @@
     "next": "16.3.5",
     "orb-ui": "^0.10.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "ws": "^8.23.0"
   },
   "keywords": [
     "google-meet",

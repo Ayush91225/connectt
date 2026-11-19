@@ -2805,3 +2805,74 @@ body {
 }
 .pip-ph-btn .icon { font-size: 16px; }
 .pip-ph-btn:hover { background: rgba(255,255,255,0.1); }
+
+/* ========================================================
+   GOOGLE MEET PARTICIPANT FILMSTRIP (DURING PRESENTATION)
+   ======================================================== */
+.gm-presentation-layout {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  gap: 12px;
+}
+
+.gm-presentation-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gm-presentation-filmstrip {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 6px;
+  scrollbar-width: thin;
+}
+
+.gm-presentation-filmstrip::-webkit-scrollbar {
+  width: 4px;
+}
+.gm-presentation-filmstrip::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+.call-container.light-theme .gm-presentation-filmstrip::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.gm-filmstrip-tile {
+  width: 100%;
+  height: 130px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+@media (max-width: 900px) {
+  .gm-presentation-layout {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .gm-presentation-filmstrip {
+    width: 100%;
+    height: 110px;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 4px;
+  }
+  .gm-filmstrip-tile {
+    width: 160px;
+    height: 100%;
+  }
+}

@@ -61,6 +61,7 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
   const [remoteParticipants, setRemoteParticipants] = useState({});
   const [remotePresentation, setRemotePresentation] = useState(null);
   const [toolSyncData, setToolSyncData] = useState({});
+  const [chatMessages, setChatMessages] = useState([]);
   const ivsClientRef = useRef(null);
   const knownParticipantsRef = useRef(new Set());
 
@@ -112,7 +113,9 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
         });
       },
       onPresentationChange: (data) => {
-        if (!data || data.presenter === userName) return;
+        if (!data) return;
+        if (data.sessionId && data.sessionId === ivsClientRef.current?.sessionId) return;
+        if (data.presenter === userName && !data.sessionId) return;
         if (data.active && data.mode) {
           setRemotePresentation(data);
           showToast(`${data.presenter} is presenting ${data.mode}`);
@@ -122,7 +125,8 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
         }
       },
       onToolEvent: (data) => {
-        if (!data || data.userName === userName) return;
+        if (!data) return;
+        if (data.sessionId && data.sessionId === ivsClientRef.current?.sessionId) return;
         if (data.toolType && data.payload) {
           setToolSyncData(prev => ({
             ...prev,
@@ -131,7 +135,8 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
         }
       },
       onChatMessage: (data) => {
-        if (!data || data.sender === userName) return;
+        if (!data) return;
+        if (data.sessionId && data.sessionId === ivsClientRef.current?.sessionId) return;
         if (data.subType === 'REACTION' && data.emoji) {
           sfx.playReaction();
           const remoteR = {
@@ -145,9 +150,18 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
             setFloatingEmojis(prev => prev.filter(r => r.id !== remoteR.id));
           }, 2800);
         }
+        if (data.subType === 'TEXT' && data.text) {
+          const now = new Date();
+          setChatMessages(prev => [...prev, {
+            id: Date.now() + Math.random(),
+            sender: data.sender || 'Guest',
+            text: data.text,
+            time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }]);
+        }
       },
       onStreamAdded: (participantName, data) => {
-        if (!participantName || participantName === userName) return;
+        if (!participantName) return;
         setRemoteParticipants(prev => ({
           ...prev,
           [participantName]: {
@@ -304,6 +318,104 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
     adjustTimer,
     stopAlarm,
     formatTimer
+  };
+
+  // Host Controls State
+  const [hostControls, setHostControls] = useState({
+    hostManagement: true,
+    allowShareScreen: true,
+    allowChat: true,
+    allowTurnOnMic: true,
+    allowTurnOnVideo: true,
+    allowSendReactions: true
+  });
+
+  const handleHostControl = (controls) => {
+    setHostControls(prev => ({ ...prev, ...controls }));
+    ivsClientRef.current?.broadcastHostControl(controls);
+    showToast('Host settings updated');
+  };
+
+  // Real Dynamic Hardware Device Enumeration (No Static Data)
+  const [availableVideoDevices, setAvailableVideoDevices] = useState([]);
+  const [availableAudioDevices, setAvailableAudioDevices] = useState([]);
+  const [selectedVideoLabel, setSelectedVideoLabel] = useState('Camera (Built-in)');
+  const [selectedAudioLabel, setSelectedAudioLabel] = useState('Microphone (Built-in)');
+
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices?.enumerateDevices) {
+      navigator.mediaDevices.enumerateDevices().then((devices) => {
+        const vDevs = devices.filter(d => d.kind === 'videoinput');
+        const aDevs = devices.filter(d => d.kind === 'audioinput');
+        setAvailableVideoDevices(vDevs);
+        setAvailableAudioDevices(aDevs);
+        if (vDevs.length > 0 && vDevs[0].label) setSelectedVideoLabel(vDevs[0].label);
+        if (aDevs.length > 0 && aDevs[0].label) setSelectedAudioLabel(aDevs[0].label);
+      }).catch(() => {});
+    }
+  }, []);
+
+  // Google Meet Dynamic Mosaic Grid Sizing
+  const getGridStyle = (count) => {
+    if (count <= 1) {
+      return {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%',
+        height: '100%',
+        padding: '16px',
+        boxSizing: 'border-box'
+      };
+    }
+    if (count === 2) {
+      return {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 460px), 1fr))',
+        gap: '12px',
+        width: '100%',
+        height: '100%',
+        padding: '12px',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxSizing: 'border-box'
+      };
+    }
+    if (count <= 4) {
+      return {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gridTemplateRows: 'repeat(2, 1fr)',
+        gap: '12px',
+        width: '100%',
+        height: '100%',
+        padding: '12px',
+        boxSizing: 'border-box'
+      };
+    }
+    if (count <= 6) {
+      return {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gridTemplateRows: 'repeat(2, 1fr)',
+        gap: '10px',
+        width: '100%',
+        height: '100%',
+        padding: '10px',
+        boxSizing: 'border-box'
+      };
+    }
+    return {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+      gridAutoRows: '1fr',
+      gap: '8px',
+      width: '100%',
+      height: '100%',
+      padding: '8px',
+      overflowY: 'auto',
+      boxSizing: 'border-box'
+    };
   };
 
   // Media states
@@ -694,6 +806,16 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
     }, 2800);
   };
 
+  // Send chat message - broadcasted to all participants via WebSocket
+  const handleSendChatMessage = (text) => {
+    if (!text.trim()) return;
+    const now = new Date();
+    const msg = { id: Date.now(), sender: userName, text, time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+    setChatMessages(prev => [...prev, msg]);
+    ivsClientRef.current?.sendWsMessage({ type: 'CHAT', subType: 'TEXT', sender: userName, text });
+    ivsClientRef.current?.channel?.postMessage({ type: 'CHAT', subType: 'TEXT', sender: userName, text });
+  };
+
   // Hand raise - broadcasted to room
   const handleToggleHand = () => {
     const next = !isHandRaised;
@@ -877,66 +999,79 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
       >
 
         {(presentationMode || remotePresentation) ? (
-          /* Multi-Mode Presentation Stage (Screen Share, Excalidraw, YouTube, Slides, Chess, Desmos, Quiz, Timer) */
-          <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            {remotePresentation && !presentationMode && (
-              <div style={{
-                background: theme === 'light' ? '#e8f0fe' : '#1e293b',
-                color: theme === 'light' ? '#1967d2' : '#93c5fd',
-                padding: '6px 16px',
-                fontSize: '13px',
-                fontWeight: 500,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                borderBottom: '1px solid rgba(0,0,0,0.08)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>present_to_all</span>
-                  <span><strong>{remotePresentation.presenter}</strong> is presenting {remotePresentation.mode} to everyone</span>
+          /* Multi-Mode Presentation Stage with Google Meet Participant Filmstrip */
+          <div className="gm-presentation-layout">
+            <div className="gm-presentation-main">
+              {remotePresentation && !presentationMode && (
+                <div style={{
+                  background: theme === 'light' ? '#e8f0fe' : '#1e293b',
+                  color: theme === 'light' ? '#1967d2' : '#93c5fd',
+                  padding: '6px 16px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderBottom: '1px solid rgba(0,0,0,0.08)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>present_to_all</span>
+                    <span><strong>{remotePresentation.presenter}</strong> is presenting {remotePresentation.mode} to everyone</span>
+                  </div>
                 </div>
+              )}
+              <ScreenShareStage
+                theme={theme}
+                mode={presentationMode || remotePresentation?.mode || 'screen'}
+                userName={presentationMode ? userName : (remotePresentation?.presenter || 'Presenter')}
+                presenterName={remotePresentation?.presenter || null}
+                isCameraOn={isCameraOn}
+                isMicOn={isMicOn}
+                cameraStream={cameraStream}
+                screenStream={
+                  presentationMode === 'screen'
+                    ? screenStream
+                    : (remotePresentation?.mode === 'screen'
+                        ? (remoteParticipants[remotePresentation.presenter]?.screenStream ||
+                           (remoteParticipants[remotePresentation.presenter]?.screenTrack
+                              ? new MediaStream([remoteParticipants[remotePresentation.presenter].screenTrack])
+                              : (remoteParticipants[remotePresentation.presenter]?.videoTrack
+                                  ? new MediaStream([remoteParticipants[remotePresentation.presenter].videoTrack])
+                                  : null)))
+                        : null)
+                }
+                onStopPresenting={presentationMode ? handleStopPresenting : () => setRemotePresentation(null)}
+                onStartScreenShare={handleToggleScreenShare}
+                timerState={timerState}
+                onOpenSidebarSettings={() => {
+                  setIsActivitiesOpen(true);
+                  setActiveActivity('timer');
+                }}
+                onToolSync={handleToolSync}
+                toolSyncData={toolSyncData}
+                isPresenter={Boolean(presentationMode)}
+              />
+            </div>
+
+            {/* Google Meet Participant Filmstrip beside presentation */}
+            {Object.keys(remoteParticipants).length > 0 && (
+              <div className="gm-presentation-filmstrip">
+                {Object.values(remoteParticipants).map((p) => (
+                  <div key={p.id || p.userName} className="gm-filmstrip-tile">
+                    <RemoteParticipantTile
+                      participant={p}
+                      theme={theme}
+                      isFilmstrip={true}
+                    />
+                  </div>
+                ))}
               </div>
             )}
-            <ScreenShareStage
-              theme={theme}
-              mode={presentationMode || remotePresentation?.mode || 'screen'}
-              userName={presentationMode ? userName : (remotePresentation?.presenter || 'Presenter')}
-              isCameraOn={isCameraOn}
-              isMicOn={isMicOn}
-              cameraStream={cameraStream}
-              screenStream={
-                presentationMode === 'screen'
-                  ? screenStream
-                  : (remotePresentation?.mode === 'screen' && remoteParticipants[remotePresentation.presenter]?.videoTrack
-                      ? new MediaStream([remoteParticipants[remotePresentation.presenter].videoTrack])
-                      : null)
-              }
-              onStopPresenting={presentationMode ? handleStopPresenting : () => setRemotePresentation(null)}
-              onStartScreenShare={handleToggleScreenShare}
-              timerState={timerState}
-              onOpenSidebarSettings={() => {
-                setIsActivitiesOpen(true);
-                setActiveActivity('timer');
-              }}
-              onToolSync={handleToolSync}
-              toolSyncData={toolSyncData}
-              isPresenter={Boolean(presentationMode)}
-            />
           </div>
         ) : (
           <div
             className={`call-video-grid-flex ${Object.keys(remoteParticipants).length > 0 ? 'has-remote-peers' : 'solo-peer'}`}
-            style={{
-              display: Object.keys(remoteParticipants).length > 0 ? 'grid' : 'flex',
-              gridTemplateColumns: Object.keys(remoteParticipants).length === 1
-                ? 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))'
-                : 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
-              gap: '14px',
-              width: '100%',
-              height: '100%',
-              padding: Object.keys(remoteParticipants).length > 0 ? '12px' : 0,
-              boxSizing: 'border-box'
-            }}
+            style={getGridStyle(1 + Object.keys(remoteParticipants).length)}
           >
             {/* Main Video Tile with Avatar Accent */}
             <div
@@ -944,21 +1079,19 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
               style={{
                 background: !isCameraOn
                   ? (theme === 'light' ? '#ffffff' : avatarAccent.tileBg)
-                  : 'linear-gradient(135deg, #4f5d71 0%, #3a4556 100%)',
+                  : (theme === 'light' ? '#f1f3f4' : '#202124'),
                 filter: activeEffect === 'blur' ? 'blur(12px)' : 'none',
                 border: (isSpeaking && isMicOn)
-                  ? `2px solid ${POWDER_BLUE}`
-                  : (theme === 'light' ? '1px solid #e8e4de' : '1.5px solid rgba(255,255,255,0.08)'),
-                boxShadow: (isSpeaking && isMicOn)
-                  ? `0 0 16px ${POWDER_BLUE_GLOW}`
-                  : (theme === 'light' ? '0 4px 20px rgba(0,0,0,0.04)' : '0 8px 32px rgba(0,0,0,0.45)'),
+                  ? '2px solid #8ab4f8'
+                  : (theme === 'light' ? '1px solid #e8e4de' : '1px solid rgba(255,255,255,0.08)'),
+                boxShadow: theme === 'light' ? '0 1px 3px rgba(60,64,67,0.12)' : '0 1px 3px rgba(0,0,0,0.3)',
                 transition: 'border-color 0.2s ease, box-shadow 0.2s ease, background 0.3s ease'
               }}
             >
               {/* Hand Raised Tile Badge (Google Meet style) */}
               {isHandRaised && (
                 <div className="call-tile-raised-hand-badge" title="Hand raised (Queue #1)">
-                  <span>✋</span>
+                  <span className="icon" style={{ fontSize: '15px' }}>back_hand</span>
                   <span>1</span>
                 </div>
               )}
@@ -1066,6 +1199,16 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
           isScreenSharing={presentationMode === 'screen'}
           presentationMode={presentationMode}
           timerState={timerState}
+          chatMessages={chatMessages}
+          onSendMessage={handleSendChatMessage}
+          remoteParticipants={remoteParticipants}
+          isMicOn={isMicOn}
+          isCameraOn={isCameraOn}
+          isHandRaised={isHandRaised}
+          onHostControl={handleHostControl}
+          hostControls={hostControls}
+          showToast={showToast}
+          meetingId={meetingId}
         />
       </div>
 
@@ -1077,10 +1220,20 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
       >
         <div
           className="quick-cam-device-select"
-          onClick={() => showToast('FaceTime HD Camera (Built-in) selected')}
+          onClick={() => {
+            if (availableVideoDevices.length > 1) {
+              const currentIdx = availableVideoDevices.findIndex(d => d.label === selectedVideoLabel);
+              const nextIdx = (currentIdx + 1) % availableVideoDevices.length;
+              const nextDev = availableVideoDevices[nextIdx];
+              setSelectedVideoLabel(nextDev.label || `Camera ${nextIdx + 1}`);
+              showToast(`${nextDev.label || 'Camera'} selected`);
+            } else {
+              showToast(`${selectedVideoLabel} selected`);
+            }
+          }}
         >
           <span className="icon" style={{ fontSize: '18px' }}>videocam</span>
-          <span>FaceTime HD Camera (Built-in)</span>
+          <span>{selectedVideoLabel}</span>
           <span className="icon" style={{ fontSize: '16px' }}>expand_more</span>
         </div>
         <button
@@ -1126,6 +1279,9 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
         onClose={() => setShowAudioQuickMenu(false)}
         isMicOn={isMicOn}
         onToggleMic={handleToggleMic}
+        availableAudioDevices={availableAudioDevices}
+        selectedAudioLabel={selectedAudioLabel}
+        onSelectAudioLabel={setSelectedAudioLabel}
         onOpenSettings={() => {
           setIsActivitiesOpen(true);
           setActiveActivity('settings');
@@ -1290,7 +1446,7 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
       {/* Floating Raised Hand Banner */}
       {isHandRaised && (
         <div className="call-hand-raised-banner">
-          <span style={{ fontSize: '18px' }}>✋</span>
+          <span className="icon" style={{ fontSize: '18px' }}>back_hand</span>
           <span className="hand-text">You raised your hand</span>
           <button
             className="hand-lower-btn"
@@ -1311,19 +1467,22 @@ export default function MeetingRoomPage({ demoMode = false, overrideMeetingId = 
         {/* RIGHT PILL — hidden on mobile (those actions move into MoreOptionsMenu) */}
         <div className="call-right-action-pill call-hide-mobile">
           <button
-            className="call-right-pill-btn"
+            className={`call-right-pill-btn ${isActivitiesOpen && activeActivity === 'people' ? 'active' : ''}`}
             data-tooltip={`People (${1 + Object.keys(remoteParticipants).length})`}
             onClick={() => {
-              const names = [userName, ...Object.values(remoteParticipants).map(p => p.userName)].join(', ');
-              showToast(`${1 + Object.keys(remoteParticipants).length} person(s) in call: ${names}`);
+              if (isActivitiesOpen && activeActivity === 'people') {
+                setIsActivitiesOpen(false);
+                setActiveActivity(null);
+              } else {
+                setIsActivitiesOpen(true);
+                setActiveActivity('people');
+              }
             }}
           >
             <span className="icon">people</span>
-            {Object.keys(remoteParticipants).length > 0 && (
-              <span style={{ fontSize: '11px', fontWeight: 700, marginLeft: '2px' }}>
-                {1 + Object.keys(remoteParticipants).length}
-              </span>
-            )}
+            <span style={{ fontSize: '11px', fontWeight: 700, marginLeft: '2px' }}>
+              {1 + Object.keys(remoteParticipants).length}
+            </span>
           </button>
 
           <button

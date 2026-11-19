@@ -96,30 +96,8 @@ export default function ExcalidrawWrapper({
     if (onSync) {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = setTimeout(() => {
-        // Strip heavy non-serializable objects before broadcasting
-        const cleanElements = elements.map(el => ({
-          id: el.id,
-          type: el.type,
-          x: el.x,
-          y: el.y,
-          width: el.width,
-          height: el.height,
-          angle: el.angle,
-          strokeColor: el.strokeColor,
-          backgroundColor: el.backgroundColor,
-          fillStyle: el.fillStyle,
-          strokeWidth: el.strokeWidth,
-          strokeStyle: el.strokeStyle,
-          roughness: el.roughness,
-          opacity: el.opacity,
-          points: el.points,
-          text: el.text,
-          fontSize: el.fontSize,
-          fontFamily: el.fontFamily,
-          textAlign: el.textAlign,
-          verticalAlign: el.verticalAlign,
-          isDeleted: el.isDeleted
-        }));
+        // Preserve full element properties including version, versionNonce, roundness, seed, boundElements for Excalidraw CRDT reconciliation
+        const cleanElements = elements.map(el => ({ ...el }));
 
         onSync({
           elements: cleanElements,
