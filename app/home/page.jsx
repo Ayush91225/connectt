@@ -547,13 +547,13 @@ export default function HomePage() {
         {[
           {
             label: 'About',
-            href: '/about',
-            external: false,
+            href: 'https://www.navchetna.tech/connectt',
+            external: true,
           },
           {
             label: 'Support',
-            href: '/support',
-            external: false,
+            href: 'https://www.navchetna.tech/contact',
+            external: true,
           },
           {
             label: 'Terms of Service',
@@ -873,26 +873,28 @@ export default function HomePage() {
                 </div>
 
                 <div style={{ borderTop: `1px solid ${border}`, paddingTop: '16px' }}>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: text, marginBottom: '6px' }}>Diagnostic Lab</div>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: text, marginBottom: '6px' }}>Support & Help</div>
                   <p style={{ fontSize: '13px', color: muted, margin: '0 0 10px 0' }}>
-                    Verify WebRTC peer mesh connectivity, latency, and microphone permissions.
+                    Connect with Team Navchetna for technical support, onboarding, or custom deployments.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => router.push('/support')}
+                  <a
+                    href="https://www.navchetna.tech/contact"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     style={{
+                      display: 'inline-block',
                       padding: '8px 16px',
                       borderRadius: '8px',
                       backgroundColor: '#0b57d0',
                       color: '#ffffff',
-                      border: 'none',
+                      textDecoration: 'none',
                       fontWeight: 600,
                       fontSize: '13px',
                       cursor: 'pointer'
                     }}
                   >
-                    Open Live Diagnostics
-                  </button>
+                    Contact Support
+                  </a>
                 </div>
               </div>
             )}
@@ -972,44 +974,49 @@ export default function HomePage() {
 
             <div style={{ borderTop: `1px solid ${border}`, paddingTop: '16px', marginBottom: '16px' }}>
               <h4 style={{ fontSize: '14px', fontWeight: 600, color: text, margin: '0 0 6px 0' }}>
-                Need Diagnostics or Support?
+                Need Help or Enterprise Inquiries?
               </h4>
               <p style={{ fontSize: '13px', color: muted, margin: '0 0 12px 0' }}>
-                Run an automated network check or connect with Team Navchetna.
+                Visit the official Navchetna support desk or explore Connectt documentation.
               </p>
               <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => router.push('/support')}
+                <a
+                  href="https://www.navchetna.tech/contact"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   style={{
+                    display: 'inline-block',
                     padding: '8px 16px',
                     borderRadius: '8px',
                     backgroundColor: '#0b57d0',
                     color: '#ffffff',
-                    border: 'none',
+                    textDecoration: 'none',
                     fontWeight: 600,
                     fontSize: '13px',
                     cursor: 'pointer'
                   }}
                 >
-                  Diagnostic Lab
-                </button>
-                <button
-                  type="button"
-                  onClick={() => router.push('/about')}
+                  Navchetna Support
+                </a>
+                <a
+                  href="https://www.navchetna.tech/connectt"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   style={{
+                    display: 'inline-block',
                     padding: '8px 16px',
                     borderRadius: '8px',
                     backgroundColor: 'transparent',
                     color: text,
                     border: `1px solid ${border}`,
+                    textDecoration: 'none',
                     fontWeight: 600,
                     fontSize: '13px',
                     cursor: 'pointer'
                   }}
                 >
                   About Connectt
-                </button>
+                </a>
               </div>
             </div>
 
