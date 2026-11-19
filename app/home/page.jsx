@@ -510,27 +510,32 @@ export default function HomePage() {
       >
         {[
           {
+            label: 'About',
+            href: '/about',
+            external: false,
+          },
+          {
             label: 'Support',
-            href: 'https://uat.homeguruworld.in/dashboard/settings?tab=support',
+            href: '/support',
+            external: false,
           },
           {
-            label: 'System status',
-            href: 'https://status.homeguruworld.in/',
-          },
-          {
-            label: 'Terms of Use',
-            href: 'https://homeguruworld.com/terms',
+            label: 'Terms of Service',
+            href: 'https://www.navchetna.tech/terms',
+            external: true,
           },
           {
             label: 'Privacy Policy',
-            href: 'https://homeguruworld.com/privacy',
+            href: 'https://www.navchetna.tech/privacy',
+            external: true,
           },
-          {
-            label: 'Library',
-            href: 'https://uat.homeguruworld.in/library',
-          },
-        ].map(({ label, href }) => (
-          <a key={label} href={href} target="_blank" rel="noopener noreferrer">
+        ].map(({ label, href, external }) => (
+          <a
+            key={label}
+            href={href}
+            target={external ? "_blank" : undefined}
+            rel={external ? "noopener noreferrer" : undefined}
+          >
             {label}
           </a>
         ))}

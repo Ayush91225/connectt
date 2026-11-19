@@ -13,6 +13,7 @@ export default function DesmosCalculator({
   const calcInstanceRef = useRef(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const isRemoteUpdatingRef = useRef(false);
+  const hasInitializedRef = useRef(false);
 
   useEffect(() => {
     // Check if Desmos is already in window
@@ -42,10 +43,13 @@ export default function DesmosCalculator({
     try {
       isRemoteUpdatingRef.current = true;
       calcInstanceRef.current.setState(syncData.state);
-    } catch (e) {}
-    setTimeout(() => {
-      isRemoteUpdatingRef.current = false;
-    }, 100);
+    } catch (e) {
+      console.warn('Desmos state sync error:', e);
+    } finally {
+      setTimeout(() => {
+        isRemoteUpdatingRef.current = false;
+      }, 150);
+    }
   }, [syncData]);
 
   useEffect(() => {
@@ -55,30 +59,39 @@ export default function DesmosCalculator({
       }
 
       if (type === 'graphing') {
-        calcInstanceRef.current = window.Desmos.GraphingCalculator(containerRef.current, {
+        const calc = window.Desmos.GraphingCalculator(containerRef.current, {
           keypad: true,
           expressions: true,
           settingsMenu: true,
           zoomButtons: true,
           border: false
         });
+        calcInstanceRef.current = calc;
 
-        // Set initial state or sample functions
+        // Set initial state from syncData or defaults if presenter
+        isRemoteUpdatingRef.current = true;
         if (syncData?.state) {
-          calcInstanceRef.current.setState(syncData.state);
-        } else {
-          calcInstanceRef.current.setExpression({ id: 'graph1', latex: 'y=\\sin(x)', color: '#89b754' });
-          calcInstanceRef.current.setExpression({ id: 'graph2', latex: 'y=x^2', color: '#7cacf8' });
+          try {
+            calc.setState(syncData.state);
+          } catch (e) {}
+        } else if (isPresenter) {
+          calc.setExpression({ id: 'graph1', latex: 'y=\\sin(x)', color: '#89b754' });
+          calc.setExpression({ id: 'graph2', latex: 'y=x^2', color: '#7cacf8' });
         }
 
+        setTimeout(() => {
+          isRemoteUpdatingRef.current = false;
+          hasInitializedRef.current = true;
+        }, 250);
+
         let changeTimer = null;
-        calcInstanceRef.current.observeEvent('change', () => {
-          if (isRemoteUpdatingRef.current) return;
+        calc.observeEvent('change', () => {
+          if (isRemoteUpdatingRef.current || !hasInitializedRef.current) return;
           if (changeTimer) clearTimeout(changeTimer);
           changeTimer = setTimeout(() => {
-            if (calcInstanceRef.current) {
+            if (calcInstanceRef.current && onSync) {
               const state = calcInstanceRef.current.getState();
-              onSync?.({ state });
+              onSync({ state });
             }
           }, 150);
         });
@@ -91,11 +104,13 @@ export default function DesmosCalculator({
 
     return () => {
       if (calcInstanceRef.current) {
-        calcInstanceRef.current.destroy();
+        try {
+          calcInstanceRef.current.destroy();
+        } catch (e) {}
         calcInstanceRef.current = null;
       }
     };
-  }, [isLoaded, type]);
+  }, [isLoaded, type, isPresenter]);
 
   return (
     <div style={{ width: '100%', height: '100%', minHeight: '380px', position: 'relative', borderRadius: '12px', overflow: 'hidden' }}>
