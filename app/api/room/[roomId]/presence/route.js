@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { recordPresence, removePresence, getActiveParticipants } from '../../../../../lib/dynamoDb';
+import { pgRecordPresence, pgRemovePresence, pgGetActiveParticipants } from '../../../../../lib/postgres';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,22 +15,31 @@ export async function POST(request, { params }) {
     }
 
     if (action === 'leave') {
-      await removePresence(roomId, userId);
+      await Promise.allSettled([
+        pgRemovePresence(roomId, userId),
+        removePresence(roomId, userId)
+      ]);
     } else {
-      await recordPresence(roomId, userId, {
-        userName,
-        isCameraOn,
-        isMicOn,
-        isSpeaking
-      });
+      await Promise.allSettled([
+        pgRecordPresence(roomId, userId, userName, isCameraOn, isMicOn, isSpeaking),
+        recordPresence(roomId, userId, {
+          userName,
+          isCameraOn,
+          isMicOn,
+          isSpeaking
+        })
+      ]);
     }
 
-    const activeParticipants = await getActiveParticipants(roomId);
+    let activeParticipants = await pgGetActiveParticipants(roomId);
+    if (!activeParticipants || activeParticipants.length === 0) {
+      activeParticipants = await getActiveParticipants(roomId);
+    }
 
     return NextResponse.json({
       success: true,
-      activeParticipants,
-      participantCount: activeParticipants.length
+      activeParticipants: activeParticipants || [],
+      participantCount: (activeParticipants || []).length
     });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

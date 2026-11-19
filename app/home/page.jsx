@@ -18,6 +18,15 @@ export default function HomePage() {
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ left: 12, top: 12 });
   const [showLaterModal, setShowLaterModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [inPersonNotes, setInPersonNotes] = useState('');
+  const [audioDevices, setAudioDevices] = useState([]);
+  const [videoDevices, setVideoDevices] = useState([]);
+  const [selectedAudio, setSelectedAudio] = useState('');
+  const [selectedVideo, setSelectedVideo] = useState('');
+  const [settingsTab, setSettingsTab] = useState('audio');
   const [generatedLink, setGeneratedLink] = useState('');
   const [toast, setToast] = useState(null);
   const [timeStr, setTimeStr] = useState('');
@@ -49,6 +58,10 @@ export default function HomePage() {
       } else {
         setUserName('Guest');
         setTempName('Guest');
+      }
+      const savedNotes = localStorage.getItem('connectt_inperson_notes');
+      if (savedNotes) {
+        setInPersonNotes(savedNotes);
       }
     } catch (e) {
       setUserName('Guest');
@@ -359,8 +372,13 @@ export default function HomePage() {
             </button>
           </div>
 
-          <button className="hm-pill hm-pill-blue hm-hide-sm" type="button">
-            <span className="icon">mic</span>
+          <button
+            className="hm-pill hm-pill-blue hm-hide-sm"
+            type="button"
+            onClick={() => setShowNotesModal(true)}
+            title="In-person meeting scratchpad notes"
+          >
+            <span className="icon">edit_note</span>
             <span>In-person notes</span>
           </button>
         </div>
@@ -372,13 +390,31 @@ export default function HomePage() {
             </span>
           )}
 
-          
-
-          <button className="hm-icon-btn" style={{ color: muted }} type="button">
+          <button
+            className="hm-icon-btn"
+            style={{ color: muted }}
+            type="button"
+            onClick={() => setShowHelpModal(true)}
+            title="Help, Diagnostics & Shortcuts"
+          >
             <span className="icon hm-large-icon">help_outline</span>
           </button>
 
-          <button className="hm-icon-btn" style={{ color: muted }} type="button">
+          <button
+            className="hm-icon-btn"
+            style={{ color: muted }}
+            type="button"
+            onClick={() => {
+              setShowSettingsModal(true);
+              if (typeof navigator !== 'undefined' && navigator.mediaDevices?.enumerateDevices) {
+                navigator.mediaDevices.enumerateDevices().then(devs => {
+                  setAudioDevices(devs.filter(d => d.kind === 'audioinput'));
+                  setVideoDevices(devs.filter(d => d.kind === 'videoinput'));
+                }).catch(() => {});
+              }
+            }}
+            title="Audio, Video & Theme Settings"
+          >
             <span className="icon hm-large-icon">settings</span>
           </button>
 
@@ -659,6 +695,494 @@ export default function HomePage() {
               <button type="button" onClick={handleSaveName}>
                 Save
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SETTINGS MODAL */}
+      {showSettingsModal && (
+        <div
+          className="hm-modal-overlay"
+          onClick={() => setShowSettingsModal(false)}
+        >
+          <div
+            className="hm-modal"
+            style={{
+              background: bg,
+              border: `1px solid ${border}`,
+              maxWidth: '520px',
+              width: '100%'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="hm-modal-heading" style={{ borderBottom: `1px solid ${border}`, paddingBottom: '12px' }}>
+              <h3 style={{ color: text, margin: 0 }}>Settings</h3>
+              <button
+                type="button"
+                className="hm-close-button"
+                onClick={() => setShowSettingsModal(false)}
+                style={{ color: muted }}
+              >
+                <span className="icon">close</span>
+              </button>
+            </div>
+
+            {/* Settings Tabs */}
+            <div style={{ display: 'flex', gap: '8px', margin: '16px 0 20px', borderBottom: `1px solid ${border}`, paddingBottom: '8px' }}>
+              {['audio', 'video', 'general'].map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setSettingsTab(tab)}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '9999px',
+                    border: 'none',
+                    backgroundColor: settingsTab === tab ? (dark ? '#3c4043' : '#e8f0fe') : 'transparent',
+                    color: settingsTab === tab ? (dark ? '#8ab4f8' : '#1a73e8') : muted,
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    textTransform: 'capitalize',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {settingsTab === 'audio' && (
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: text, marginBottom: '6px' }}>
+                  Microphone
+                </label>
+                <select
+                  value={selectedAudio}
+                  onChange={(e) => setSelectedAudio(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    backgroundColor: dark ? '#202124' : '#f1f3f4',
+                    color: text,
+                    border: `1px solid ${border}`,
+                    fontSize: '14px',
+                    marginBottom: '18px',
+                    outline: 'none'
+                  }}
+                >
+                  {audioDevices.length === 0 ? (
+                    <option value="">Default System Microphone</option>
+                  ) : (
+                    audioDevices.map((d) => (
+                      <option key={d.deviceId} value={d.deviceId}>
+                        {d.label || `Microphone (${d.deviceId.slice(0, 5)})`}
+                      </option>
+                    ))
+                  )}
+                </select>
+
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: text, marginBottom: '6px' }}>
+                  Speaker Test
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfx.playJoin();
+                    showToast('Playing test chime...');
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    backgroundColor: dark ? '#303134' : '#f1f3f4',
+                    border: `1px solid ${border}`,
+                    color: text,
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <span className="icon">volume_up</span>
+                  <span>Play Test Chime</span>
+                </button>
+              </div>
+            )}
+
+            {settingsTab === 'video' && (
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: text, marginBottom: '6px' }}>
+                  Camera
+                </label>
+                <select
+                  value={selectedVideo}
+                  onChange={(e) => setSelectedVideo(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    backgroundColor: dark ? '#202124' : '#f1f3f4',
+                    color: text,
+                    border: `1px solid ${border}`,
+                    fontSize: '14px',
+                    marginBottom: '18px',
+                    outline: 'none'
+                  }}
+                >
+                  {videoDevices.length === 0 ? (
+                    <option value="">Default System Camera</option>
+                  ) : (
+                    videoDevices.map((d) => (
+                      <option key={d.deviceId} value={d.deviceId}>
+                        {d.label || `Camera (${d.deviceId.slice(0, 5)})`}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <p style={{ fontSize: '13px', color: muted, margin: 0 }}>
+                  Camera permissions will be requested when entering the meeting room or preview lobby.
+                </p>
+              </div>
+            )}
+
+            {settingsTab === 'general' && (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: text }}>Dark Mode</div>
+                    <div style={{ fontSize: '12px', color: muted }}>Toggle between light and dark theme</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDark(!dark)}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '9999px',
+                      backgroundColor: dark ? '#8ab4f8' : '#e8eaed',
+                      color: dark ? '#202124' : '#202124',
+                      border: 'none',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {dark ? 'Dark Active' : 'Light Active'}
+                  </button>
+                </div>
+
+                <div style={{ borderTop: `1px solid ${border}`, paddingTop: '16px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: text, marginBottom: '6px' }}>Diagnostic Lab</div>
+                  <p style={{ fontSize: '13px', color: muted, margin: '0 0 10px 0' }}>
+                    Verify WebRTC peer mesh connectivity, latency, and microphone permissions.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => router.push('/support')}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      backgroundColor: '#0b57d0',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Open Live Diagnostics
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="hm-modal-actions" style={{ marginTop: '24px' }}>
+              <button
+                type="button"
+                onClick={() => setShowSettingsModal(false)}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '9999px',
+                  backgroundColor: '#0b57d0',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HELP & SHORTCUTS MODAL */}
+      {showHelpModal && (
+        <div
+          className="hm-modal-overlay"
+          onClick={() => setShowHelpModal(false)}
+        >
+          <div
+            className="hm-modal"
+            style={{
+              background: bg,
+              border: `1px solid ${border}`,
+              maxWidth: '520px',
+              width: '100%'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="hm-modal-heading" style={{ borderBottom: `1px solid ${border}`, paddingBottom: '12px' }}>
+              <h3 style={{ color: text, margin: 0 }}>Help & Shortcuts</h3>
+              <button
+                type="button"
+                className="hm-close-button"
+                onClick={() => setShowHelpModal(false)}
+                style={{ color: muted }}
+              >
+                <span className="icon">close</span>
+              </button>
+            </div>
+
+            <div style={{ margin: '18px 0' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: 600, color: text, margin: '0 0 10px 0' }}>
+                Keyboard Shortcuts
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '13px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', backgroundColor: dark ? '#202124' : '#f8f9fa', borderRadius: '6px', color: text }}>
+                  <span>Toggle Microphone</span>
+                  <kbd style={{ backgroundColor: dark ? '#303134' : '#e8eaed', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>⌘ + D</kbd>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', backgroundColor: dark ? '#202124' : '#f8f9fa', borderRadius: '6px', color: text }}>
+                  <span>Toggle Camera</span>
+                  <kbd style={{ backgroundColor: dark ? '#303134' : '#e8eaed', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>⌘ + E</kbd>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', backgroundColor: dark ? '#202124' : '#f8f9fa', borderRadius: '6px', color: text }}>
+                  <span>Push to Talk</span>
+                  <kbd style={{ backgroundColor: dark ? '#303134' : '#e8eaed', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>Space</kbd>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', backgroundColor: dark ? '#202124' : '#f8f9fa', borderRadius: '6px', color: text }}>
+                  <span>Raise Hand</span>
+                  <kbd style={{ backgroundColor: dark ? '#303134' : '#e8eaed', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>⌘ + H</kbd>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ borderTop: `1px solid ${border}`, paddingTop: '16px', marginBottom: '16px' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: 600, color: text, margin: '0 0 6px 0' }}>
+                Need Diagnostics or Support?
+              </h4>
+              <p style={{ fontSize: '13px', color: muted, margin: '0 0 12px 0' }}>
+                Run an automated network check or connect with Team Navchetna.
+              </p>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => router.push('/support')}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    backgroundColor: '#0b57d0',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Diagnostic Lab
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push('/about')}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    backgroundColor: 'transparent',
+                    color: text,
+                    border: `1px solid ${border}`,
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  About Connectt
+                </button>
+              </div>
+            </div>
+
+            <div className="hm-modal-actions">
+              <button
+                type="button"
+                onClick={() => setShowHelpModal(false)}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '9999px',
+                  backgroundColor: dark ? '#303134' : '#f1f3f4',
+                  color: text,
+                  border: `1px solid ${border}`,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* IN-PERSON NOTES MODAL */}
+      {showNotesModal && (
+        <div
+          className="hm-modal-overlay"
+          onClick={() => setShowNotesModal(false)}
+        >
+          <div
+            className="hm-modal"
+            style={{
+              background: bg,
+              border: `1px solid ${border}`,
+              maxWidth: '640px',
+              width: '100%'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="hm-modal-heading" style={{ borderBottom: `1px solid ${border}`, paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="icon" style={{ color: '#0b57d0' }}>edit_note</span>
+                <h3 style={{ color: text, margin: 0 }}>In-Person Notes Studio</h3>
+              </div>
+              <button
+                type="button"
+                className="hm-close-button"
+                onClick={() => setShowNotesModal(false)}
+                style={{ color: muted }}
+              >
+                <span className="icon">close</span>
+              </button>
+            </div>
+
+            <p style={{ color: muted, fontSize: '13px', margin: '12px 0 10px 0' }}>
+              Capture real-time meeting notes, action items, and agendas. Auto-saved locally.
+            </p>
+
+            {/* Quick Templates */}
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
+              <span style={{ fontSize: '12px', color: muted, alignSelf: 'center', marginRight: '4px' }}>Templates:</span>
+              {[
+                { label: 'Standup', text: "### Daily Standup\n- Yesterday:\n- Today:\n- Blockers:\n" },
+                { label: '1-on-1', text: "### 1-on-1 Sync\n- Wins & Highlights:\n- Topics to discuss:\n- Action items & Owners:\n" },
+                { label: 'Discovery', text: "### Client Discovery\n- Client Goals:\n- Technical Requirements:\n- Next Milestones:\n" }
+              ].map(({ label, text: tmpl }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => {
+                    const next = inPersonNotes ? `${inPersonNotes}\n\n${tmpl}` : tmpl;
+                    setInPersonNotes(next);
+                    try { localStorage.setItem('connectt_inperson_notes', next); } catch(e) {}
+                  }}
+                  style={{
+                    padding: '3px 10px',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    backgroundColor: dark ? '#303134' : '#f1f3f4',
+                    color: text,
+                    border: `1px solid ${border}`,
+                    cursor: 'pointer'
+                  }}
+                >
+                  + {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Notes Textarea */}
+            <textarea
+              value={inPersonNotes}
+              onChange={(e) => {
+                setInPersonNotes(e.target.value);
+                try { localStorage.setItem('connectt_inperson_notes', e.target.value); } catch(e) {}
+              }}
+              placeholder="Type your meeting notes, agenda, decisions, or follow-ups here..."
+              rows={12}
+              style={{
+                width: '100%',
+                padding: '14px',
+                borderRadius: '10px',
+                backgroundColor: dark ? '#202124' : '#ffffff',
+                color: text,
+                border: `1px solid ${border}`,
+                fontSize: '14px',
+                fontFamily: 'inherit',
+                lineHeight: 1.6,
+                boxSizing: 'border-box',
+                resize: 'vertical',
+                outline: 'none'
+              }}
+            />
+
+            {/* Footer Stats & Actions */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ fontSize: '12px', color: muted }}>
+                {inPersonNotes.trim().length} chars · {inPersonNotes.trim() ? inPersonNotes.trim().split(/\s+/).length : 0} words
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (navigator?.clipboard?.writeText) {
+                      navigator.clipboard.writeText(inPersonNotes);
+                      showToast('Notes copied to clipboard!');
+                    }
+                  }}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '8px',
+                    backgroundColor: dark ? '#303134' : '#f1f3f4',
+                    border: `1px solid ${border}`,
+                    color: text,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <span className="icon" style={{ fontSize: '16px' }}>content_copy</span>
+                  <span>Copy</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const code = `${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
+                    try { sessionStorage.setItem('connectt_carry_notes', inPersonNotes); } catch(e) {}
+                    router.push(`/${code}`);
+                  }}
+                  style={{
+                    padding: '6px 16px',
+                    borderRadius: '8px',
+                    backgroundColor: '#0b57d0',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <span className="icon" style={{ fontSize: '16px' }}>videocam</span>
+                  <span>Start Call with Notes</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
