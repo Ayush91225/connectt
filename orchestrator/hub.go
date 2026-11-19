@@ -299,8 +299,11 @@ func (c *Client) readPump() {
 			c.room.mutex.Unlock()
 			c.room.broadcastToOthers(c.ID, rawMsg)
 
-		case "CHAT", "TOOL_SYNC", "WHITEBOARD_DRAW", "SIGNAL":
+		case "CHAT", "TOOL_SYNC", "WHITEBOARD_DRAW", "SIGNAL", "HOST_CONTROL", "RTC_OFFER", "RTC_ANSWER", "RTC_ICE":
 			// Forward real-time message instantly to all peers
+			c.room.broadcastToOthers(c.ID, rawMsg)
+		default:
+			// Forward any other collaborative messages
 			c.room.broadcastToOthers(c.ID, rawMsg)
 		}
 	}
